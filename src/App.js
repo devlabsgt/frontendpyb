@@ -4,7 +4,7 @@ import Login from "./componentes/login/Login";
 import Dashboard from "./componentes/dashboard/Dashboard";
 import { jwtDecode } from "jwt-decode";
 import Swal from "sweetalert2"; // Importa SweetAlert2
-import  Home  from  "./componentes/home/homes";
+import Home from "./componentes/home/homes";
 
 // Componente para proteger las rutas privadas
 const PrivateRoute = ({ children }) => {
@@ -71,3 +71,4 @@ function App() {
 }
 
 export default App;
+//TEST
