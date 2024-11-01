@@ -1,6 +1,5 @@
 import React from 'react';
-import backgroundImage from '../../../img/background_A.jpg';  // Imagen de fondo
-import logoImage from '../../../img/pazybienwhite.png';  // Imagen encima del fondo
+import backgroundImage from '../../../img/background_A.webp';  // Imagen de fondo
 
 function Header() {
   const headerStyle = {
