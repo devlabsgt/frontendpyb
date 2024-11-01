@@ -12,12 +12,12 @@
   
   .icon-container i {
     font-size: 2rem;
-    color: #007bff;
+    color: #009acc;
     transition: color 0.3s ease;
   }
   
   .icon-container:hover {
-    background-color: #007bff;
+    background-color: #009acc;
   }
   
   .icon-container:hover i {
@@ -26,3 +26,4 @@
   section#best-features {
     overflow-x: hidden;
   }
+

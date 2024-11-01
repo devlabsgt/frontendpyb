@@ -2,9 +2,9 @@ import React from 'react';
 
 function Footer() {
   return (
-    <footer className="page-footer font-small blue" style={{ backgroundColor: '#343a40', color: '#fff' }}>
+    <footer className="page-footer font-small blue" style={{ backgroundColor: '#009acc', color: '#fff' }}>
       {/* Social buttons */}
-      <div className="bg-primary">
+      <div>
         <div className="container">
           {/* Grid row */}
           <div className="row py-4 d-flex align-items-center">

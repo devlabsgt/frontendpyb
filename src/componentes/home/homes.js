@@ -23,7 +23,7 @@ function Homes() {
       <Wave fill='#f8f9fa' paused={false} style={{ display: 'flex', transform: 'rotate(180deg)' }} options={{ height: 20, amplitude: 20, speed: 0.25, points: 3 }}/>
       <Gallery />
       <Contact />
-      <Wave fill='#0d6efd' paused={false} style={{ display: 'flex' }} options={{ height: 4, amplitude: 20, speed: 0.25, points: 3 }}/>
+      <Wave fill='#009acc' paused={false} style={{ display: 'flex' }} options={{ height: 4, amplitude: 20, speed: 0.25, points: 3 }}/>
       <Footer />
     </div>
   );
