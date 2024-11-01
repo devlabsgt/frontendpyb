@@ -4,6 +4,7 @@ import Login from "./componentes/login/Login";
 import Dashboard from "./componentes/dashboard/Dashboard";
 import { jwtDecode } from "jwt-decode";
 import Swal from "sweetalert2"; // Importa SweetAlert2
+import  Home  from  "./componentes/home/homes";
 
 // Componente para proteger las rutas privadas
 const PrivateRoute = ({ children }) => {
@@ -54,8 +55,8 @@ function App() {
   return (
     <Routes>
       {/* Ruta para iniciar sesión */}
-      <Route path="/" element={<Login />} />
-
+      <Route path="/" element={<Home />} />
+      <Route path="/inicio" element={<Login />} />
       {/* Ruta protegida para el dashboard */}
       <Route
         path="/dashboard"
