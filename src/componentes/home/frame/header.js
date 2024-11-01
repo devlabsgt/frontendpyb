@@ -27,14 +27,7 @@ function Header() {
     color: 'white'
   };
 
-  const logoStyle = {
-    position: 'absolute',
-    top: '17%',  // Ajusta la posición vertical
-    left: '50%',
-    transform: 'translateX(-50%)',  // Centra horizontalmente
-    width: '15rem',  // Ajusta el tamaño de la imagen
-    zIndex: 3  // Coloca el logo sobre la máscara y el fondo
-  };
+
 
   return (
     <header style={headerStyle}>
@@ -45,7 +38,7 @@ function Header() {
       {/* <img src={logoImage} alt="Logo Paz y Bien" style={logoStyle} /> */}
 
       {/* Contenido */}
-      <div className="container d-flex align-items-center justify-content-center h-100">
+      <div className="container d-flex align-items-center justify-content-center h-100" id='inicio'>
         <div style={contentStyle} className="text-center">
           <h2 className="display-4 font-weight-bold pt-1 mb-2">
             Asociación Paz y Bien Guatemala
