@@ -70,7 +70,7 @@ export const ModalVerUsuario = ({ isOpen, onClose, usuario,getAuthHeaders }) => 
   const handleSave = async () => {
     if (!validateFields()) return;
     try {
-      await axios.put(`${process.env.REACT_APP_backend}/usuario/${editableUsuario._id}`, editableUsuario,getAuthHeaders());
+      await axios.put(`${process.env.REACT_APP_backend}/usuario/${editableUsuario._id}`, editableUsuario, getAuthHeaders());
       setSuccessMessage("Cambios guardados correctamente");
     } catch (error) {
       console.error("Error al guardar los cambios:", error);

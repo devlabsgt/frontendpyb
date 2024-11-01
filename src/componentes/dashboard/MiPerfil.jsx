@@ -37,7 +37,7 @@ const MiPerfil = () => {
           const decoded = jwtDecode(token); // Decodifica el token para obtener el ID
           const userId = decoded.id; // Suponiendo que el ID está en el campo 'id'
           const response = await axios.get(
-            `${process.env.REACT_APP_backend}/usuario/${userId}`,getAuthHeaders()
+            `${process.env.REACT_APP_backend}/usuario/${userId}`, getAuthHeaders()
           );
           setUsuario(response.data);
         }
@@ -75,12 +75,13 @@ const MiPerfil = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+
   const handleSave = async () => {
     if (!validateFields()) return;
     try {
       await axios.put(
         `${process.env.REACT_APP_backend}/usuario/${usuario._id}`,
-        usuario
+        usuario,getAuthHeaders
       );
       toast({
         title: "Cambios guardados.",
