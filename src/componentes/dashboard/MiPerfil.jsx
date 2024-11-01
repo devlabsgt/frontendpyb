@@ -20,6 +20,15 @@ const MiPerfil = () => {
 
   const toast = useToast(); // Inicializa el hook de toast
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    };
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -28,7 +37,7 @@ const MiPerfil = () => {
           const decoded = jwtDecode(token); // Decodifica el token para obtener el ID
           const userId = decoded.id; // Suponiendo que el ID está en el campo 'id'
           const response = await axios.get(
-            `${process.env.REACT_APP_backend}/usuario/${userId}`
+            `${process.env.REACT_APP_backend}/usuario/${userId}`,getAuthHeaders()
           );
           setUsuario(response.data);
         }
