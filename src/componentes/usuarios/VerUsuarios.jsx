@@ -10,7 +10,7 @@ import {
   Tab,
   TabPanel,
   Table,
-  Divider,
+  //Divider,
   TableContainer,
   Thead,
   Tbody,
@@ -26,6 +26,7 @@ import { ViewIcon } from "@chakra-ui/icons";
 import axios from "axios";
 import { ModalVerUsuario, ModalAddUsuario } from "./ModalsUsuarios";
 import Swal from "sweetalert2";
+import { Select } from "@chakra-ui/react";
 
 const VerUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -36,12 +37,14 @@ const VerUsuarios = () => {
   const [isActiveTab, setIsActiveTab] = useState(true);
   const [activeCount, setActiveCount] = useState(0);
   const [inactiveCount, setInactiveCount] = useState(0);
+  const [selectedRole, setSelectedRole] = useState("");
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
 
   useEffect(() => {
     obtenerUsuarios(isActiveTab);
     obtenerContadorUsuarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActiveTab]);
 
   const getAuthHeaders = () => {
@@ -158,6 +161,27 @@ const VerUsuarios = () => {
     setFilteredUsuarios(filtered);
   };
 
+// Lista de roles disponibles (modifícala según tus necesidades)
+const roles = ["Administrador", "Encargado", "Usuario"];
+
+// Función para manejar el cambio de rol
+const handleRoleChange = (e) => {
+  const role = e.target.value;
+  setSelectedRole(role);
+};
+
+// Filtra usuarios según el rol seleccionado
+useEffect(() => {
+  if (selectedRole) {
+    const filteredByRole = usuarios.filter((usuario) => usuario.rol === selectedRole);
+    setFilteredUsuarios(filteredByRole);
+  } else {
+    setFilteredUsuarios(usuarios);
+  }
+}, [selectedRole, usuarios]);
+
+
+
   useEffect(() => {
     if (tags.length > 0) {
       const filtered = usuarios.filter((usuario) =>
@@ -174,205 +198,180 @@ const VerUsuarios = () => {
   }, [tags, usuarios]);
 
   return (
-    <Box p={0}>
-      <Flex mb={4} alignItems="center">
-        <Button ml={4} colorScheme="blue" onClick={onAddOpen}>
-          Añadir Usuario
-        </Button>
-        <Input
-          placeholder="Buscar usuario..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          onKeyDown={handleKeyDown}
-          ml={4}
-          w="50%"
-        />
-        <Box>
-          {tags.map((tag) => (
-            <Tag key={tag} ml='2'>
-              <TagLabel>{tag}</TagLabel>
-              <TagCloseButton onClick={() => handleDeleteTag(tag)} />
-            </Tag>
-          ))}
-        </Box>
-      </Flex>
+<Box p={5} bg="gray.50" borderRadius="lg" boxShadow="base">
+  {/* Contenedor horizontal para el botón, campo de búsqueda y selector de roles */}
+  <Flex mb={2} alignItems="center" width="100%">
+    <Button colorScheme="blue" onClick={onAddOpen} mr={4}>
+      Añadir Usuario
+    </Button>
+    <Input
+      placeholder="Buscar usuario..."
+      value={searchTerm}
+      onChange={handleSearchChange}
+      onKeyDown={handleKeyDown}
+      w="50%"
+      mr={4}
+    />
+    <Select
+      placeholder="Selecciona un rol"
+      value={selectedRole}
+      onChange={handleRoleChange}
+      w="25%"
+    >
+      {roles.map((rol) => (
+        <option key={rol} value={rol}>
+          {rol}
+        </option>
+      ))}
+    </Select>
+  </Flex>
 
-      <Tabs onChange={(index) => setIsActiveTab(index === 0)}>
-        <TabList>
-          <Tab>Activos ({activeCount})</Tab>
-          <Tab>Inactivos ({inactiveCount})</Tab>
-        </TabList>
+  {/* Contenedor para las etiquetas, colocado en una nueva línea */}
+  <Box width="60%" mt={2}>
+    {tags.map((tag) => (
+      <Tag key={tag} size="md" colorScheme="teal" borderRadius="full" mr={2}>
+        <TagLabel>{tag}</TagLabel>
+        <TagCloseButton onClick={() => handleDeleteTag(tag)} />
+      </Tag>
+    ))}
 
-        <TabPanels>
-          <TabPanel>
-            <TableContainer>
-              <Table variant="simple" size="md">
-                <Thead display={{ base: "none", md: "table-header-group" }}>
-                  <Tr>
-                    <Th>Nombre</Th>
-                    <Th>Email</Th>
-                    <Th>Teléfono</Th>
-                    <Th>Rol</Th>
-                    <Th>Acciones</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {filteredUsuarios.map((usuario) => (
-                    <React.Fragment key={usuario._id}>
-                      <Tr display={{ base: "table-row", md: "none" }} borderBottom="1px solid" borderColor="gray.200">
-                        <Td colSpan="2">
-                          <Box fontWeight="bold" fontSize="lg">{usuario.nombre}</Box>
-                          <Box fontSize="sm">
-                            <strong>Correo:</strong> {usuario.email} <br />
-                            <strong>Teléfono:</strong> {usuario.telefono} <br />
-                            <strong>Rol:</strong> {usuario.rol}
-                                                       <Box display="flex" justifyContent="flex-end" mt={2} width="100%">
-                              <Button
-                                leftIcon={<ViewIcon />}
-                                onClick={() => handleVerUsuario(usuario)}
-                                colorScheme="blue"
-                                size="sm"
-                                width="75px"
-                                mb={1}
-                                mr={2} 
-                              >
-                                Ver
-                              </Button>
-                              <Button
-                                colorScheme="red"
-                                size="sm"
-                                width="75px"
-                                onClick={() => handleInactivarUsuario(usuario._id)}
-                              >
-                                Inactivar
-                              </Button>
-                            </Box>
-                          </Box>
-                        </Td>
-                      </Tr>
-                      <Tr display={{ base: "none", md: "table-row" }}>
-                        <Td>{usuario.nombre}</Td>
-                        <Td>{usuario.email}</Td>
-                        <Td>{usuario.telefono}</Td>
-                        <Td>{usuario.rol}</Td>
-                        <Td>
-                          <Button
-                            leftIcon={<ViewIcon />}
-                            onClick={() => handleVerUsuario(usuario)}
-                            colorScheme="blue"
-                            size="sm"
-                            mr={2}
-                          >
-                            Ver
-                          </Button>
-                          <Button
-                            colorScheme="red"
-                            size="sm"
-                            onClick={() => handleInactivarUsuario(usuario._id)}
-                          >
-                            Inactivar
-                          </Button>
-                        </Td>
-                      </Tr>
-                    </React.Fragment>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
+     {/* Botón para borrar todas las etiquetas */}
+     {tags.length > 0 && (
+      <Button
+      size="sm"
+      colorScheme="teal"
+      borderRadius="full" // Bordes redondeados
+      height="25px" // Altura similar a las etiquetas
+      paddingX={4} // Ajusta el padding horizontal
+      ml={2} // Espaciado entre el botón y las etiquetas
+      onClick={() => setTags([])}
+      >
+        Borrar Busquedas
+      </Button>
+    )}
+  </Box>
 
-          <TabPanel>
-            <TableContainer>
-              <Table variant="simple" size="md">
-                <Thead display={{ base: "none", md: "table-header-group" }}>
-                  <Tr>
-                    <Th>Nombre</Th>
-                    <Th>Email</Th>
-                    <Th>Teléfono</Th>
-                    <Th>Rol</Th>
-                    <Th>Acciones</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {filteredUsuarios.map((usuario) => (
-                    <React.Fragment key={usuario._id}>
-                      <Tr display={{ base: "table-row", md: "none" }} borderBottom="1px solid" borderColor="gray.200">
-                        <Td colSpan="2">
-                          <Box fontWeight="bold" fontSize="lg">{usuario.nombre}</Box>
-                          <Box fontSize="sm" color="gray.600">{usuario.email}</Box>
-                          <Divider my={2} />
-                          <Box fontSize="sm">
-                            <strong>Teléfono:</strong> {usuario.telefono} <br />
-                            <strong>Rol:</strong> {usuario.rol}
-                          </Box>
-                          <Box mt={2} display="flex" justifyContent="flex-end">
-                            <Button
-                              leftIcon={<ViewIcon />}
-                              onClick={() => handleVerUsuario(usuario)}
-                              colorScheme="blue"
-                              size="xs"
-                              mr={2}
-                            >
-                              Ver
-                            </Button>
-                            <Button
-                              colorScheme="green"
-                              size="xs"
-                              onClick={() => handleActivarUsuario(usuario._id)}
-                            >
-                              Activar
-                            </Button>
-                          </Box>
-                        </Td>
-                      </Tr>
-                      <Tr display={{ base: "none", md: "table-row" }}>
-                        <Td>{usuario.nombre}</Td>
-                        <Td>{usuario.email}</Td>
-                        <Td>{usuario.telefono}</Td>
-                        <Td>{usuario.rol}</Td>
-                        <Td>
-                          <Button
-                            leftIcon={<ViewIcon />}
-                            onClick={() => handleVerUsuario(usuario)}
-                            colorScheme="blue"
-                            size="sm"
-                            mr={2}
-                          >
-                            Ver
-                          </Button>
-                          <Button
-                            colorScheme="green"
-                            size="sm"
-                            onClick={() => handleActivarUsuario(usuario._id)}
-                          >
-                            Activar
-                          </Button>
-                        </Td>
-                      </Tr>
-                    </React.Fragment>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+<br />
 
-      <ModalVerUsuario 
-        isOpen={isOpen} 
-        onClose={() => { onClose(); obtenerUsuarios(isActiveTab); }} 
-        usuario={selectedUsuario} 
-        getAuthHeaders={()=>getAuthHeaders()}
+  <Tabs onChange={(index) => setIsActiveTab(index === 0)}>
+    <TabList>
+      <Tab _selected={{ color: "white", bg: "blue.700" }}>Activos ({activeCount})</Tab>
+      <Tab _selected={{ color: "white", bg: "red.500" }}>Inactivos ({inactiveCount})</Tab>
+    </TabList>
 
-      />
-      <ModalAddUsuario
-        isOpen={isAddOpen}
-        onClose={() => { onAddClose(); obtenerUsuarios(isActiveTab); }}
-        obtenerUsuarios={() => obtenerUsuarios(isActiveTab)}
-        getAuthHeaders={()=>getAuthHeaders()}
+    <TabPanels>
+      <TabPanel>
+        <TableContainer borderRadius="md" boxShadow="md" bg="white" p={4}>
+          <Table variant="striped" colorScheme="gray" size="md">
+            <Thead>
+            <Tr bg="blue.300">
+            <Th color="white">Nombre</Th>
+            <Th color="white">Email</Th>
+            <Th color="white">Teléfono</Th>
+            <Th color="white">Rol</Th>
+            <Th color="white">Acciones</Th>
+          </Tr>
+            </Thead>
+            <Tbody>
+              {filteredUsuarios.map((usuario) => (
+                <Tr key={usuario._id} _hover={{ bg: "gray.100" }}>
+                  <Td fontWeight="bold">{usuario.nombre}</Td>
+                  <Td>{usuario.email}</Td>
+                  <Td>{usuario.telefono}</Td>
+                  <Td>
+                    <Tag colorScheme={usuario.rol === "Administrador" ? "purple" : "green"}>
+                      {usuario.rol}
+                    </Tag>
+                  </Td>
+                  <Td>
+                    <Button
+                      leftIcon={<ViewIcon />}
+                      onClick={() => handleVerUsuario(usuario)}
+                      colorScheme="blue"
+                      size="sm"
+                      mr={2}
+                    >
+                      Ver
+                    </Button>
+                    <Button
+                      colorScheme="red"
+                      size="sm"
+                      onClick={() => handleInactivarUsuario(usuario._id)}
+                    >
+                      Inactivar
+                    </Button>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </TabPanel>
 
-      />
-    </Box>
+      <TabPanel>
+        <TableContainer borderRadius="md" boxShadow="md" bg="white" p={4}>
+        <Table size="md" variant="striped">
+        <Thead>
+            <Tr bg="red.900">
+              <Th color="white">Nombre</Th>
+              <Th color="white">Email</Th>
+              <Th color="white">Teléfono</Th>
+              <Th color="white">Rol</Th>
+              <Th color="white">Acciones</Th>
+            </Tr>
+            </Thead>
+            <Tbody>
+              {filteredUsuarios.map((usuario) => (
+                <Tr key={usuario._id} _hover={{ bg: "gray.100" }}>
+                  <Td fontWeight="bold">{usuario.nombre}</Td>
+                  <Td>{usuario.email}</Td>
+                  <Td>{usuario.telefono}</Td>
+                  <Td>
+                    <Tag colorScheme={usuario.rol === "Administrador" ? "purple" : "green"}>
+                      {usuario.rol}
+                    </Tag>
+                  </Td>
+                  <Td>
+                    <Button
+                      leftIcon={<ViewIcon />}
+                      onClick={() => handleVerUsuario(usuario)}
+                      colorScheme="blue"
+                      size="sm"
+                      mr={2}
+                    >
+                      Ver
+                    </Button>
+                    <Button
+                      colorScheme="green"
+                      size="sm"
+                      onClick={() => handleActivarUsuario(usuario._id)}
+                    >
+                      Activar
+                    </Button>
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </TabPanel>
+    </TabPanels>
+  </Tabs>
+
+  <ModalVerUsuario 
+    isOpen={isOpen} 
+    onClose={() => { onClose(); obtenerUsuarios(isActiveTab); }} 
+    usuario={selectedUsuario} 
+    getAuthHeaders={getAuthHeaders}
+  />
+  <ModalAddUsuario
+    isOpen={isAddOpen}
+    onClose={() => { onAddClose(); obtenerUsuarios(isActiveTab); }}
+    obtenerUsuarios={() => obtenerUsuarios(isActiveTab)}
+    getAuthHeaders={getAuthHeaders}
+  />
+</Box>
+
   );
 };
 
