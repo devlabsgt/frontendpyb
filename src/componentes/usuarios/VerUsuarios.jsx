@@ -233,27 +233,27 @@ const VerUsuarios = () => {
         </Select>
       </Flex>
 
-      <Box width="60%" mt={2}>
-        {tags.map(tag => (
-          <Tag key={tag} size="md" colorScheme="teal" borderRadius="full" mr={2}>
-            <TagLabel>{tag}</TagLabel>
-            <TagCloseButton onClick={() => handleDeleteTag(tag)} />
-          </Tag>
-        ))}
-        {tags.length > 0 && (
-          <Button
-            size="sm"
-            colorScheme="teal"
-            borderRadius="full"
-            height="25px"
-            paddingX={4}
-            ml={2}
-            onClick={() => setTags([])}
-          >
-            Borrar Búsquedas
-          </Button>
-        )}
-      </Box>
+      <Flex ml="15%" mt={2} wrap="wrap" justifyContent="flex-start">
+    {tags.map(tag => (
+      <Tag key={tag} size="md" colorScheme="teal" borderRadius="full" mr={2} mb={2}>
+        <TagLabel>{tag}</TagLabel>
+        <TagCloseButton onClick={() => handleDeleteTag(tag)} />
+      </Tag>
+    ))}
+    {tags.length > 0 && (
+      <Button
+        size="sm"
+        colorScheme="teal"
+        borderRadius="full"
+        height="25px"
+        paddingX={4}
+        ml={2}
+        onClick={() => setTags([])}
+      >
+        Borrar Búsquedas
+      </Button>
+    )}
+  </Flex>
 
       <br />
 

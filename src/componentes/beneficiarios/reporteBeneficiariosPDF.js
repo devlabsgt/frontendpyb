@@ -3,7 +3,8 @@ import "jspdf-autotable";
 
 export const generarReporteBeneficiariosPDF = (
   beneficiarios,
-  consulta = "Beneficiarios"
+  consulta = "Beneficiarios",
+  nombreArchivo = "Reporte_Beneficiarios"
 ) => {
   const doc = new jsPDF({
     orientation: "landscape",
@@ -149,4 +150,10 @@ export const generarReporteBeneficiariosPDF = (
       URL.revokeObjectURL(pdfUrl); // Liberar la URL cuando se haya cargado
     };
   }
+  
+  // Usar el nombre de archivo incluyendo la fecha
+  //const formattedDate = fechaActual.replace(/\//g, "-");
+  //doc.save(`${nombreArchivo}_${formattedDate}.pdf`);
 };
+
+
