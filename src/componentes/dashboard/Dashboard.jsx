@@ -17,49 +17,64 @@ import {
   useBreakpointValue,
   Heading,
 } from "@chakra-ui/react";
-import { FaUser, FaSignOutAlt, FaBars } from "react-icons/fa";
+import { FaUser, FaSignOutAlt, FaBars, FaHeartbeat, FaHome, FaProjectDiagram } from "react-icons/fa";
 import logo from '../../img/logo.png';
 import VerUsuarios from '../usuarios/VerUsuarios';
-import MiPerfil from './MiPerfil'; // Asegúrate de tener este componente
+import VerBeneficiarios from '../beneficiarios/VerBeneficiarios';
+import ResumenInicio from "../resumeninicio/ResumenInicio"; // Importar el nuevo componente
+import MiPerfil from './MiPerfil';
 import { jwtDecode } from 'jwt-decode';
-import Swal from 'sweetalert2'; // Importa SweetAlert2
+import Swal from 'sweetalert2';
+import GestionProyectos from "../proyectos/GestionProyectos";
 
 const Dashboard = () => {
   const [view, setView] = useState('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const token = localStorage.getItem('token'); // Obtiene el token del local storage
-  const decodedToken = token ? jwtDecode(token) : null; // Decodifica el token
-  const userRole = decodedToken ? decodedToken.rol : null; // Obtiene el rol del usuario
+  const token = localStorage.getItem('token');
+  const decodedToken = token ? jwtDecode(token) : null;
+  const userRole = decodedToken ? decodedToken.rol : null;
 
-const handleLogout = () => {
-  Swal.fire({
-    title: "¿Estás seguro?",
-    text: "¿Deseas cerrar sesión?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Sí, cerrar sesión",
-    cancelButtonText: "Cancelar"
-  }).then((result) => {
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: "Cerrar sesión",
-        text: "Has cerrado sesión. ¡Hasta la próxima!",
-        icon: "success",
-        confirmButtonText: "Aceptar"
-      }).then(() => {
-        localStorage.removeItem('token');
-        window.location.href = '/';
+  const obtenerBeneficiarios = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_backend}/beneficiario`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+      return await response.json();
+    } catch (error) {
+      console.error("Error al obtener beneficiarios:", error);
+      return [];
     }
-  });
-};
+  };
 
+  const handleLogout = () => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¿Deseas cerrar sesión?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Sí, cerrar sesión",
+      cancelButtonText: "Cancelar"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Cerrar sesión",
+          text: "Has cerrado sesión. ¡Hasta la próxima!",
+          icon: "success",
+          confirmButtonText: "Aceptar"
+        }).then(() => {
+          localStorage.removeItem('token');
+          window.location.href = '/';
+        });
+      }
+    });
+  };
 
   const isMobile = useBreakpointValue({ base: true, md: false });
-
   const toggleDrawer = () => setIsDrawerOpen(!isDrawerOpen);
 
   return (
@@ -69,6 +84,7 @@ const handleLogout = () => {
         <Spacer />
 
         {isMobile ? (
+
           <IconButton
             icon={<FaBars />}
             aria-label="Abrir menú"
@@ -77,7 +93,34 @@ const handleLogout = () => {
           />
         ) : (
           <>
-            {['Administrador', 'Super'].includes(userRole) && ( // Solo muestra el botón si el rol es Administrador o Super
+            <Button
+              colorScheme="green"
+              size="sm"
+              mr="2.5"
+              leftIcon={<FaHome />}
+              onClick={() => setView('dashboard')}
+            >
+              Inicio
+            </Button>
+            <Button
+              colorScheme="orange"
+              size="sm"
+              mr="2.5"
+              leftIcon={<FaProjectDiagram />}
+              onClick={() => setView('proyectos')}
+            >
+              Gestión Proyectos
+            </Button>
+            <Button
+              colorScheme="purple"
+              size="sm"
+              mr="2.5"
+              leftIcon={<FaHeartbeat />}
+              onClick={() => setView('beneficiarios')}
+            >
+              Ver Beneficiarios
+            </Button>
+            {['Administrador', 'Super'].includes(userRole) && (
               <Button
                 colorScheme="blue"
                 size="sm"
@@ -89,11 +132,11 @@ const handleLogout = () => {
               </Button>
             )}
             <Button
-              colorScheme="green" // Botón de Mi Perfil
+              colorScheme="teal"
               size="sm"
               mr="2.5"
               leftIcon={<FaUser />}
-              onClick={() => setView('perfil')} // Cambiar a la vista de perfil
+              onClick={() => setView('perfil')}
             >
               Mi Perfil
             </Button>
@@ -110,7 +153,6 @@ const handleLogout = () => {
         )}
       </Flex>
 
-      {/* Drawer para dispositivos móviles */}
       <Drawer isOpen={isDrawerOpen} placement="right" onClose={toggleDrawer}>
         <DrawerOverlay />
         <DrawerContent>
@@ -118,7 +160,29 @@ const handleLogout = () => {
           <DrawerHeader>Menú</DrawerHeader>
           <DrawerBody>
             <VStack align="start" spacing="4">
-              {['Administrador', 'Super'].includes(userRole) && ( // Solo muestra el botón en el drawer si el rol es Administrador o Super
+              <Button
+                w="100%"
+                colorScheme="teal"
+                leftIcon={<FaHome />}
+                onClick={() => {
+                  setView('dashboard');
+                  toggleDrawer();
+                }}
+              >
+                Inicio
+              </Button>
+              <Button
+                w="100%"
+                colorScheme="orange"
+                leftIcon={<FaProjectDiagram />}
+                onClick={() => {
+                  setView('proyectos');
+                  toggleDrawer();
+                }}
+              >
+                Gestión Proyectos
+              </Button>
+              {['Administrador', 'Super'].includes(userRole) && (
                 <Button
                   w="100%"
                   colorScheme="blue"
@@ -133,10 +197,21 @@ const handleLogout = () => {
               )}
               <Button
                 w="100%"
-                colorScheme="green" // Botón de Mi Perfil
-                leftIcon={<FaUser />} // Puedes cambiar el icono si lo deseas
+                colorScheme="purple"
+                leftIcon={<FaHeartbeat />}
                 onClick={() => {
-                  setView('perfil'); // Cambiar a la vista de perfil
+                  setView('beneficiarios');
+                  toggleDrawer();
+                }}
+              >
+                Ver Beneficiarios
+              </Button>
+              <Button
+                w="100%"
+                colorScheme="green"
+                leftIcon={<FaUser />}
+                onClick={() => {
+                  setView('perfil');
                   toggleDrawer();
                 }}
               >
@@ -155,15 +230,12 @@ const handleLogout = () => {
         </DrawerContent>
       </Drawer>
 
-      <Box pt="5" textAlign="center">
-        {view === 'dashboard' && (
-          <>
-            <Heading>Bienvenido al Dashboard</Heading>
-            <p>Aquí puedes administrar los proyectos y beneficiarios de Paz y Bien, Quezaltepeque.</p>
-          </>
-        )}
+      <Box pt="5">
+        {view === 'dashboard' && <ResumenInicio obtenerBeneficiarios={obtenerBeneficiarios} />}
         {view === 'usuarios' && <VerUsuarios />}
-        {view === 'perfil' && <MiPerfil />} {/* Aquí se muestra el componente de Mi Perfil */}
+        {view === 'beneficiarios' && <VerBeneficiarios />}
+        {view === 'perfil' && <MiPerfil />}
+        {view === 'proyectos' && <GestionProyectos />}
       </Box>
     </Box>
   );
