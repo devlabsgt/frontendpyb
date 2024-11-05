@@ -78,12 +78,19 @@ const VerBeneficiarios = () => {
   const obtenerBeneficiarios = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_backend}/beneficiario`, getAuthHeaders());
-      const sortedBeneficiarios = response.data.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      setBeneficiarios(sortedBeneficiarios);
+  
+      // Verifica si response.data es un array
+      if (Array.isArray(response.data)) {
+        const sortedBeneficiarios = response.data.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        setBeneficiarios(sortedBeneficiarios);
+      } else {
+        console.error("La respuesta no es una lista de beneficiarios:", response.data);
+      }
     } catch (error) {
       console.error("Error al obtener los beneficiarios", error);
     }
   };
+  
 
   const filtrarBeneficiarios = () => {
     let filtered = beneficiarios;

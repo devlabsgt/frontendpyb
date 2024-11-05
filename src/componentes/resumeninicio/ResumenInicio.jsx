@@ -8,14 +8,12 @@ import {
   CardFooter,
   Text,
   Flex,
-   Table, Tbody, Tr, Td,
+  Grid,
 } from "@chakra-ui/react";
 import { Pie, Bar, Line } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement } from "chart.js";
 
-
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement);
-
 
 const ResumenInicio = ({ obtenerBeneficiarios }) => {
   const [beneficiarios, setBeneficiarios] = useState([]);
@@ -29,38 +27,35 @@ const ResumenInicio = ({ obtenerBeneficiarios }) => {
     obtenerDatosBeneficiarios();
   }, []);
 
-const obtenerDatosBeneficiarios = async () => {
-  const data = await obtenerBeneficiarios();
-  // Filtrar solo los beneficiarios activos
-  const activos = data.filter(b => b.activo === true);
-  
-  setBeneficiarios(activos);
+  const obtenerDatosBeneficiarios = async () => {
+    const data = await obtenerBeneficiarios();
+    const activos = data.filter(b => b.activo === true);
 
-  const total = activos.length;
-  const ninos = activos.filter(b => calcularEdad(new Date(b.fechaNacimiento)) < 13).length;
-  const adolescentes = activos.filter(b => {
-    const edad = calcularEdad(new Date(b.fechaNacimiento));
-    return edad >= 13 && edad < 18;
-  }).length;
-  const adultos = activos.filter(b => {
-    const edad = calcularEdad(new Date(b.fechaNacimiento));
-    return edad >= 18 && edad < 65;
-  }).length;
-  const adultosMayores = activos.filter(b => calcularEdad(new Date(b.fechaNacimiento)) >= 65).length;
+    setBeneficiarios(activos);
+    const total = activos.length;
+    const ninos = activos.filter(b => calcularEdad(new Date(b.fechaNacimiento)) < 13).length;
+    const adolescentes = activos.filter(b => {
+      const edad = calcularEdad(new Date(b.fechaNacimiento));
+      return edad >= 13 && edad < 18;
+    }).length;
+    const adultos = activos.filter(b => {
+      const edad = calcularEdad(new Date(b.fechaNacimiento));
+      return edad >= 18 && edad < 65;
+    }).length;
+    const adultosMayores = activos.filter(b => calcularEdad(new Date(b.fechaNacimiento)) >= 65).length;
 
-  setTotal(total);
-  setNinos(ninos);
-  setAdolescentes(adolescentes);
-  setAdultos(adultos);
-  setAdultosMayores(adultosMayores);
-};
-
+    setTotal(total);
+    setNinos(ninos);
+    setAdolescentes(adolescentes);
+    setAdultos(adultos);
+    setAdultosMayores(adultosMayores);
+  };
 
   const calcularEdad = (fechaNacimiento) => {
     const hoy = new Date();
     let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
     const mes = hoy.getMonth() - fechaNacimiento.getMonth();
-    if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+    if (mes < 0 || (mes === 0 && hoy.getdate() < fechaNacimiento.getdate())) {
       edad--;
     }
     return edad;
@@ -92,35 +87,25 @@ const obtenerDatosBeneficiarios = async () => {
     ],
   };
 
-const lineData = {
-  labels: ["Niños", "Adolescentes", "Adultos", "Adultos Mayores"],
-  datasets: [
-    {
-      label: "Distribución de Beneficiarios",
-      data: [ninos, adolescentes, adultos, adultosMayores],
-      borderColor: "#36A2EB",
-      fill: false,
-      tension: 0.1, // para una línea ligeramente curvada, ajusta a 0 para línea recta
-    },
-  ],
-};
-const lineOptions = {
-  responsive: true,
-  plugins: {
-    tooltip: {
-      callbacks: {
-        label: (tooltipItem) => `${tooltipItem.raw} beneficiarios`,
+  const lineData = {
+    labels: ["Niños", "Adolescentes", "Adultos", "Adultos Mayores"],
+    datasets: [
+      {
+        label: "Distribución de Beneficiarios",
+        data: [ninos, adolescentes, adultos, adultosMayores],
+        borderColor: "#36A2EB",
+        fill: false,
+        tension: 0.1,
       },
-    },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-    },
-  },
-};
+    ],
+  };
 
-
+  const lineOptions = {
+    responsive: true,
+    scales: {
+      y: { beginAtZero: true },
+    },
+  };
 
   const barOptions = {
     responsive: true,
@@ -134,29 +119,10 @@ const lineOptions = {
     },
   };
 
-  const scatterOptions = {
-    scales: {
-      x: {
-        type: "category",
-        labels: ["Niños", "Adolescentes", "Adultos", "Adultos Mayores"],
-      },
-      y: {
-        beginAtZero: true,
-      },
-    },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: (tooltipItem) => `${tooltipItem.raw.y} beneficiarios`,
-        },
-      },
-    },
-  };
-
   const renderTable = () => (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
-        <tr>
+      <tr>
           <th style={{ borderBottom: "2px solid #e2e2e2", padding: "8px", textAlign: "left" }}>
             Categoría
           </th>
@@ -169,7 +135,7 @@ const lineOptions = {
         </tr>
       </thead>
       <tbody>
-        <tr>
+      <tr>
           <td style={{ borderBottom: "1px solid #e2e2e2", padding: "8px" }}>Total de Beneficiarios</td>
           <td style={{ borderBottom: "1px solid #e2e2e2", padding: "8px", textAlign: "right" }}>{total}</td>
           <td style={{ borderBottom: "1px solid #e2e2e2", padding: "8px", textAlign: "right" }}>100%</td>
@@ -198,100 +164,75 @@ const lineOptions = {
     </table>
   );
 
+  const renderTable2 = () => (
+    <table variant="simple" size="sm">
+    <tbody>
+      <tr>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>
+          <Box as="span" bg="#ffc534" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
+          Niños
+        </td>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>menores de 12 años</td>
+      </tr>
+      <tr>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>
+          <Box as="span" bg="#059bff" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
+          Adolescentes
+        </td>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>12 a 17 años</td>
+      </tr>
+      <tr>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>
+          <Box as="span" bg="#22cfcf" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
+          Adultos
+        </td>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>18 a 64 años</td>
+      </tr>
+      <tr>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>
+          <Box as="span" bg="#ff4069" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
+          Adultos Mayores
+        </td>
+        <td style={{ border: "1px solid #0099cc", padding: "8px" }}>65 años o más</td>
+      </tr>
+
+    </tbody>
+  </table>
+  );
+
+
   return (
     <Box>
-      <Box textAlign="center" mb={6}>
-        <Heading>Bienvenido al Dashboard</Heading>
+      <Grid templateColumns="repeat(4, 1fr)" gap={4} px={5}>
+        <Card boxShadow="lg" p={4} bg="gray.100">
+          <Heading size="md" textAlign="center">Categorías de Beneficiarios</Heading>
+          <CardBody>{renderTable2()}</CardBody>
+        </Card>
 
- <Flex justify="center" mt={5}>
-    <Card boxShadow="lg" px={4} bg="gray.50" w="500px">
-      <CardHeader>
-        <Heading size="md" textAlign="center">
-          Los beneficiarios se agrupan en las siguientes categorías:
-        </Heading>
-      </CardHeader>
-      <CardBody pt="0">
-        <Table variant="simple" size="sm" >
-          <Tbody>
-        <Tr>
-          <Td border="1px solid" borderColor="#0099cc">
-            <Box as="span" bg="#ffc534" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
-            Niños
-          </Td>
-          <Td border="1px solid" borderColor="#0099cc">menores de 12 años</Td>
-        </Tr>
-        <Tr>
-          <Td border="1px solid" borderColor="#0099cc">
-            <Box as="span" bg="#059bff" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
-            Adolescentes
-          </Td>
-          <Td border="1px solid" borderColor="#0099cc">12 a 17 años</Td>
-        </Tr>
-        <Tr>
-          <Td border="1px solid" borderColor="#0099cc">
-            <Box as="span" bg="#22cfcf" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
-            Adultos
-          </Td>
-          <Td border="1px solid" borderColor="#0099cc">18 a 64 años</Td>
-        </Tr>
-        <Tr>
-          <Td border="1px solid" borderColor="#0099cc">
-            <Box as="span" bg="#ff4069" w="10px" h="10px" borderRadius="50%" display="inline-block" mr="2" />
-            Adultos Mayores
-          </Td>
-          <Td border="1px solid" borderColor="#0099cc">65 años o más</Td>
-        </Tr>
-
-          </Tbody>
-        </Table>
-      </CardBody>
-    </Card>
-  </Flex>
-
-
-
-      </Box>
-
-      <Flex justifyContent="center" wrap="wrap" gap={6} px={5}>
-        {/* Gráfica de Pastel */}
-        <Card w="500px" boxShadow="lg" p={3} bg="gray.50" mx="auto" mt={{ base: 4, md: 0 }}>
-          <CardHeader>
-            <Heading size="md" textAlign="center">
-              Resumen de Beneficiarios - Gráfica de Pastel
-            </Heading>
-          </CardHeader>
+        <Card boxShadow="lg" p={4} bg="gray.100">
+          <Heading size="md" textAlign="center">Gráfica de Pastel</Heading>
           <CardBody>
-            <Pie data={pieData} style={{ width: "100%", height: "100px" }} />
+            <Pie data={pieData} />
           </CardBody>
           <CardFooter>{renderTable()}</CardFooter>
         </Card>
 
-        {/* Gráfica de Barras */}
-        <Card w="500px" boxShadow="lg" p={3} bg="gray.50" mx="auto" mt={{ base: 4, md: 0 }}>
-          <CardHeader>
-            <Heading size="md" textAlign="center">
-              Resumen de Beneficiarios - Gráfica de Barras
-            </Heading>
-          </CardHeader>
+        <Card boxShadow="lg" p={4} bg="gray.100">
+          <Heading size="md" textAlign="center">Gráfica de Barras</Heading>
           <CardBody>
-            <Bar data={barData} options={barOptions} style={{ width: "100%", height: "450px" }} />
+            <Bar data={barData} options={barOptions} />
           </CardBody>
           <CardFooter>{renderTable()}</CardFooter>
         </Card>
 
-        {/* Gráfica de Puntos */}
-        <Card w="500px" boxShadow="lg" p={3} bg="gray.50" mx="auto" mt={{ base: 4, md: 0 }}>
-          <CardHeader>
-            <Heading size="md" textAlign="center">
-              Resumen de Beneficiarios - Gráfica de Puntos
-            </Heading>
-          </CardHeader>
+        <Card boxShadow="lg" p={4} bg="gray.100">
+          <Heading size="md" textAlign="center">Gráfica de Línea</Heading>
           <CardBody>
-                <Line data={lineData} options={lineOptions} style={{ width: "100%", height: "450px" }} />
+            <Line data={lineData} options={lineOptions} />
           </CardBody>
           <CardFooter>{renderTable()}</CardFooter>
         </Card>
-      </Flex>
+      </Grid>
     </Box>
   );
 };
