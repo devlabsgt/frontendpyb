@@ -78,7 +78,7 @@ const QuickCreateSelect = ({
       case "linea":
         return "linea-estrategica";
       case "donante":
-        return "donante";
+        return "donante/crear";
       case "beneficiario":
         return "beneficiario";
       default:
@@ -206,6 +206,7 @@ const QuickCreateSelect = ({
       }
 
       const newItem = await response.json();
+      console.log("Donante creado:", newItem); // Para debugging
 
       if (onNewOption) {
         onNewOption(newItem);

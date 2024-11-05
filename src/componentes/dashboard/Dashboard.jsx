@@ -17,7 +17,7 @@ import {
   useBreakpointValue,
   Heading,
 } from "@chakra-ui/react";
-import { FaUser, FaSignOutAlt, FaBars, FaHeartbeat, FaHome } from "react-icons/fa";
+import { FaUser, FaSignOutAlt, FaBars, FaHeartbeat, FaHome, FaProjectDiagram } from "react-icons/fa";
 import logo from '../../img/logo.png';
 import VerUsuarios from '../usuarios/VerUsuarios';
 import VerBeneficiarios from '../beneficiarios/VerBeneficiarios';
@@ -25,6 +25,7 @@ import ResumenInicio from "../resumeninicio/ResumenInicio"; // Importar el nuevo
 import MiPerfil from './MiPerfil';
 import { jwtDecode } from 'jwt-decode';
 import Swal from 'sweetalert2';
+import GestionProyectos from "../proyectos/GestionProyectos";
 
 const Dashboard = () => {
   const [view, setView] = useState('dashboard');
@@ -102,6 +103,15 @@ const Dashboard = () => {
               Inicio
             </Button>
             <Button
+              colorScheme="orange"
+              size="sm"
+              mr="2.5"
+              leftIcon={<FaProjectDiagram />}
+              onClick={() => setView('proyectos')}
+            >
+              Gestión Proyectos
+            </Button>
+            <Button
               colorScheme="purple"
               size="sm"
               mr="2.5"
@@ -161,6 +171,17 @@ const Dashboard = () => {
               >
                 Inicio
               </Button>
+              <Button
+                w="100%"
+                colorScheme="orange"
+                leftIcon={<FaProjectDiagram />}
+                onClick={() => {
+                  setView('proyectos');
+                  toggleDrawer();
+                }}
+              >
+                Gestión Proyectos
+              </Button>
               {['Administrador', 'Super'].includes(userRole) && (
                 <Button
                   w="100%"
@@ -214,6 +235,7 @@ const Dashboard = () => {
         {view === 'usuarios' && <VerUsuarios />}
         {view === 'beneficiarios' && <VerBeneficiarios />}
         {view === 'perfil' && <MiPerfil />}
+        {view === 'proyectos' && <GestionProyectos />}
       </Box>
     </Box>
   );

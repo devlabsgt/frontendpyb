@@ -470,7 +470,7 @@ const GestionProyectos = () => {
       borderRadius="xl"
       overflow="hidden"
       borderTop="4px solid"
-      borderColor="purple.400"
+      borderColor="blue.400"
     >
       <CardBody>
         <VStack align="stretch" spacing={4}>
@@ -482,7 +482,7 @@ const GestionProyectos = () => {
                 py="1" 
                 borderRadius="full"
                 bg="purple.50"
-                color="purple.700"
+                color="blue.400"
               >
                 {proyecto.numero}
               </Badge>
@@ -622,12 +622,7 @@ const GestionProyectos = () => {
   );
 
   return (
-    <Container 
-      maxW="container.xl" 
-      py={6} 
-      px={{ base: 4, md: 6 }}
-      bg="gray.50"
-    >
+    <Container maxW="container.xl" py={6} px={{ base: 4, md: 6 }} bg="gray.50">
       <VStack spacing={6} align="stretch">
         <Card
           bg="white"
@@ -635,7 +630,7 @@ const GestionProyectos = () => {
           borderRadius="xl"
           overflow="hidden"
           borderTop="4px solid"
-          borderColor="purple.400"
+          borderColor="blue.400"
         >
           <CardBody>
             <VStack spacing={6} align="stretch">
@@ -646,17 +641,14 @@ const GestionProyectos = () => {
                 align={{ base: "stretch", md: "center" }}
                 gap={4}
               >
-                <Heading 
+                <Heading
                   size={{ base: "md", md: "lg" }}
                   bgGradient="linear(to-r, purple.600, blue.600)"
                   bgClip="text"
                 >
                   Gestión de Proyectos
                 </Heading>
-                <HStack 
-                  spacing={4}
-                  w={{ base: "full", md: "auto" }}
-                >
+                <HStack spacing={4} w={{ base: "full", md: "auto" }}>
                   <Select
                     value={estadoFilter}
                     onChange={handleEstadoFilterChange}
@@ -664,8 +656,11 @@ const GestionProyectos = () => {
                     w={{ base: "full", md: "200px" }}
                     bg="white"
                     borderColor="purple.200"
-                    _hover={{ borderColor: "purple.300" }}
-                    _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px var(--chakra-colors-purple-400)" }}
+                    _hover={{ borderColor: "blue.300" }}
+                    _focus={{
+                      borderColor: "blue.400",
+                      boxShadow: "0 0 0 1px var(--chakra-colors-purple-400)",
+                    }}
                   >
                     <option value="todos">Todos los estados</option>
                     <option value="Activo">Activos</option>
@@ -674,10 +669,10 @@ const GestionProyectos = () => {
                   </Select>
                   <Button
                     leftIcon={<Plus className="w-4 h-4" />}
-                    bg="purple.500"
+                    bg="blue.500"
                     color="white"
-                    _hover={{ bg: "purple.600" }}
-                    _active={{ bg: "purple.700" }}
+                    _hover={{ bg: "blue.600" }}
+                    _active={{ bg: "blue.700" }}
                     onClick={handleCreateProject}
                     size="md"
                     shadow="sm"
@@ -690,20 +685,22 @@ const GestionProyectos = () => {
 
               {/* Lista de proyectos */}
               {filteredProyectos.length === 0 ? (
-                <Box 
-                  py={10} 
-                  textAlign="center" 
-                  bg="gray.50" 
+                <Box
+                  py={10}
+                  textAlign="center"
+                  bg="gray.50"
                   borderRadius="xl"
                   border="2px dashed"
                   borderColor="gray.200"
                 >
                   <Text color="gray.500" mb={4}>
                     No se encontraron proyectos{" "}
-                    {estadoFilter !== "todos" ? `en estado ${estadoFilter}` : ""}
+                    {estadoFilter !== "todos"
+                      ? `en estado ${estadoFilter}`
+                      : ""}
                   </Text>
                   <Button
-                    colorScheme="purple"
+                    colorScheme="blue"
                     variant="outline"
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={handleCreateProject}
@@ -720,7 +717,7 @@ const GestionProyectos = () => {
                       ))}
                     </VStack>
                   ) : (
-                    <Box 
+                    <Box
                       overflowX="auto"
                       bg="white"
                       borderRadius="xl"
@@ -729,19 +726,31 @@ const GestionProyectos = () => {
                       <Table variant="simple">
                         <Thead bg="gray.50">
                           <Tr>
-                            <Th 
-                              borderBottom="2px" 
-                              borderColor="purple.100"
+                            <Th
+                              borderBottom="2px"
+                              borderColor="blue.100"
                               color="gray.700"
                             >
                               Número
                             </Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Código</Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Nombre</Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Encargado</Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Estado</Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Avance</Th>
-                            <Th borderBottom="2px" borderColor="purple.100">Acciones</Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Código
+                            </Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Nombre
+                            </Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Encargado
+                            </Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Estado
+                            </Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Avance
+                            </Th>
+                            <Th borderBottom="2px" borderColor="blue.100">
+                              Acciones
+                            </Th>
                           </Tr>
                         </Thead>
                         <Tbody>
@@ -753,16 +762,18 @@ const GestionProyectos = () => {
                             >
                               <Td fontWeight="medium">{proyecto.numero}</Td>
                               <Td>
-                                <Code 
-                                  px="2" 
-                                  py="1" 
+                                <Code
+                                  px="2"
+                                  py="1"
                                   borderRadius="md"
                                   bg="gray.50"
                                 >
                                   {proyecto.codigo}
                                 </Code>
                               </Td>
-                              <Td maxW="300px" isTruncated>{proyecto.nombre}</Td>
+                              <Td maxW="300px" isTruncated>
+                                {proyecto.nombre}
+                              </Td>
                               <Td>{proyecto.encargado?.nombre}</Td>
                               <Td>
                                 <Badge
@@ -790,29 +801,43 @@ const GestionProyectos = () => {
                               <Td>
                                 <VStack align="stretch" spacing={1}>
                                   <HStack justify="space-between">
-                                    <Text fontSize="sm">{proyecto.nivelAvance}%</Text>
+                                    <Text fontSize="sm">
+                                      {proyecto.nivelAvance}%
+                                    </Text>
                                     <Text fontSize="xs" color="gray.500">
-                                      {proyecto.personasAlcanzadas} beneficiarios
+                                      {proyecto.personasAlcanzadas}{" "}
+                                      beneficiarios
                                     </Text>
                                   </HStack>
                                   <Progress
                                     value={proyecto.nivelAvance}
                                     size="sm"
                                     borderRadius="full"
-                                    bg="gray.200"
+                                    bg="gray.50"
                                     sx={{
-                                      '& > div': {
-                                        background: 
+                                      "& > div": {
+                                        background:
                                           proyecto.nivelAvance < 30
-                                            ? 'linear-gradient(to right, #f56565, #fc8181)'
+                                            ? "linear-gradient(to right, #e53e3e, #f56565)"
                                             : proyecto.nivelAvance < 70
-                                            ? 'linear-gradient(to right, #ecc94b, #f6e05e)'
-                                            : 'linear-gradient(to right, #48bb78, #68d391)'
-                                      }
+                                            ? "linear-gradient(to right, #d69e2e, #ecc94b)"
+                                            : "linear-gradient(to right, #38a169, #48bb78)",
+                                        boxShadow:
+                                          "0px 2px 4px rgba(0, 0, 0, 0.2)",
+                                      },
                                     }}
                                     hasStripe
-                                    isAnimated
-                                  />
+                                  >
+                                    <Text
+                                      color="white"
+                                      fontWeight="bold"
+                                      textAlign="center"
+                                      position="absolute"
+                                      w="100%"
+                                    >
+                                      {`${proyecto.nivelAvance}%`}
+                                    </Text>
+                                  </Progress>
                                 </VStack>
                               </Td>
                               <Td>
@@ -824,9 +849,11 @@ const GestionProyectos = () => {
                                       colorScheme="purple"
                                       variant="ghost"
                                       bg="purple.50"
-                                      onClick={() => handleViewDetails(proyecto)}
+                                      onClick={() =>
+                                        handleViewDetails(proyecto)
+                                      }
                                       size="sm"
-                                      _hover={{ bg: 'purple.100' }}
+                                      _hover={{ bg: "purple.100" }}
                                     />
                                   </Tooltip>
                                   <Tooltip
@@ -845,10 +872,12 @@ const GestionProyectos = () => {
                                       colorScheme="blue"
                                       variant="ghost"
                                       bg="blue.50"
-                                      onClick={() => handleEditProject(proyecto._id)}
+                                      onClick={() =>
+                                        handleEditProject(proyecto._id)
+                                      }
                                       size="sm"
                                       isDisabled={proyecto.estado !== "Activo"}
-                                      _hover={{ bg: 'blue.100' }}
+                                      _hover={{ bg: "blue.100" }}
                                     />
                                   </Tooltip>
                                   <EstadoMenu
@@ -872,31 +901,32 @@ const GestionProyectos = () => {
                           isDisabled={currentPage === 1}
                           aria-label="Previous page"
                           bg="white"
-                          borderColor="purple.200"
-                          _hover={{ bg: 'purple.50' }}
+                          borderColor="blue.200"
+                          _hover={{ bg: "blue.50" }}
                         />
                         {Array.from({ length: totalPages }, (_, i) => (
                           <Button
                             key={i + 1}
                             onClick={() => handlePageChange(i + 1)}
-                            bg={currentPage === i + 1 ? "purple.500" : "white"}
+                            bg={currentPage === i + 1 ? "blue.500" : "white"}
                             color={currentPage === i + 1 ? "white" : "gray.600"}
-                            borderColor="purple.200"
+                            borderColor="blue.200"
                             _hover={{
-                              bg: currentPage === i + 1 ? "purple.600" : "purple.50"
+                              bg:
+                                currentPage === i + 1 ? "blue.600" : "blue.50",
                             }}
                             display={{ base: "none", md: "inline-flex" }}
                           >
                             {i + 1}
                           </Button>
                         ))}
-                        <Text 
+                        <Text
                           display={{ base: "inline-flex", md: "none" }}
                           px={4}
                           py={2}
                           bg="white"
                           borderX="1px"
-                          borderColor="purple.200"
+                          borderColor="blue.200"
                         >
                           {currentPage} de {totalPages}
                         </Text>
@@ -906,8 +936,8 @@ const GestionProyectos = () => {
                           isDisabled={currentPage === totalPages}
                           aria-label="Next page"
                           bg="white"
-                          borderColor="purple.200"
-                          _hover={{ bg: 'purple.50' }}
+                          borderColor="blue.200"
+                          _hover={{ bg: "blue.50" }}
                         />
                       </ButtonGroup>
                     </HStack>
@@ -925,10 +955,7 @@ const GestionProyectos = () => {
           size={{ base: "full", md: "6xl" }}
           motionPreset={isMobile ? "slideInBottom" : "slideInRight"}
         >
-          <ModalOverlay 
-            bg="blackAlpha.300" 
-            backdropFilter="blur(10px)" 
-          />
+          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
           <ModalContent
             maxW={{ base: "100%", md: "50vw" }}
             minH={{ base: "100vh", md: "50vh" }}
@@ -979,10 +1006,7 @@ const GestionProyectos = () => {
           size={{ base: "full", md: "2xl" }}
           motionPreset="slideInBottom"
         >
-          <ModalOverlay 
-            bg="blackAlpha.300" 
-            backdropFilter="blur(10px)" 
-          />
+          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
           <ModalContent
             maxW={{ base: "100%", md: "800px" }}
             minH={{ base: "100vh", md: "auto" }}
@@ -1024,57 +1048,69 @@ const GestionProyectos = () => {
           size={{ base: "sm", md: "md" }}
         >
           <AlertDialogOverlay>
-            <AlertDialogContent 
+            <AlertDialogContent
               m={{ base: 4, md: "auto" }}
               borderRadius="xl"
               overflow="hidden"
             >
               {estadoToChange && (
                 <>
-                  <AlertDialogHeader 
-                    fontSize="lg" 
+                  <AlertDialogHeader
+                    fontSize="lg"
                     fontWeight="bold"
-                    bg={`${getConfirmationDialogContent(
-                      estadoToChange.proyecto,
-                      estadoToChange.nuevoEstado
-                    ).confirmButtonColor}.50`}
-                    color={`${getConfirmationDialogContent(
-                      estadoToChange.proyecto,
-                      estadoToChange.nuevoEstado
-                    ).confirmButtonColor}.700`}
+                    bg={`${
+                      getConfirmationDialogContent(
+                        estadoToChange.proyecto,
+                        estadoToChange.nuevoEstado
+                      ).confirmButtonColor
+                    }.50`}
+                    color={`${
+                      getConfirmationDialogContent(
+                        estadoToChange.proyecto,
+                        estadoToChange.nuevoEstado
+                      ).confirmButtonColor
+                    }.700`}
                     px={6}
                     py={4}
                   >
-                    {getConfirmationDialogContent(
-                      estadoToChange.proyecto,
-                      estadoToChange.nuevoEstado
-                    ).title}
+                    {
+                      getConfirmationDialogContent(
+                        estadoToChange.proyecto,
+                        estadoToChange.nuevoEstado
+                      ).title
+                    }
                   </AlertDialogHeader>
 
                   <AlertDialogBody px={6} py={4}>
                     <VStack align="stretch" spacing={4}>
                       <Text>
-                        {getConfirmationDialogContent(
-                          estadoToChange.proyecto,
-                          estadoToChange.nuevoEstado
-                        ).description}
+                        {
+                          getConfirmationDialogContent(
+                            estadoToChange.proyecto,
+                            estadoToChange.nuevoEstado
+                          ).description
+                        }
                       </Text>
-                      <Box 
-                        p={4} 
-                        bg="gray.50" 
+                      <Box
+                        p={4}
+                        bg="gray.50"
                         borderRadius="lg"
                         border="1px"
                         borderColor="gray.200"
                       >
                         <VStack align="start" spacing={2}>
-                          <Text 
-                            fontSize="sm" 
+                          <Text
+                            fontSize="sm"
                             fontWeight="medium"
                             color="gray.700"
                           >
                             Este cambio implica:
                           </Text>
-                          <UnorderedList spacing={2} fontSize="sm" color="gray.600">
+                          <UnorderedList
+                            spacing={2}
+                            fontSize="sm"
+                            color="gray.600"
+                          >
                             {getConfirmationDialogContent(
                               estadoToChange.proyecto,
                               estadoToChange.nuevoEstado
@@ -1088,30 +1124,34 @@ const GestionProyectos = () => {
                   </AlertDialogBody>
 
                   <AlertDialogFooter px={6} py={4}>
-                    <Button 
-                      ref={cancelRef} 
+                    <Button
+                      ref={cancelRef}
                       onClick={onConfirmClose}
                       variant="ghost"
-                      _hover={{ bg: 'gray.100' }}
+                      _hover={{ bg: "gray.100" }}
                     >
                       Cancelar
                     </Button>
                     <Button
-                      colorScheme={getConfirmationDialogContent(
-                        estadoToChange.proyecto,
-                        estadoToChange.nuevoEstado
-                      ).confirmButtonColor}
+                      colorScheme={
+                        getConfirmationDialogContent(
+                          estadoToChange.proyecto,
+                          estadoToChange.nuevoEstado
+                        ).confirmButtonColor
+                      }
                       onClick={handleConfirmEstadoChange}
                       ml={3}
                       _hover={{
-                        transform: 'translateY(-1px)',
-                        shadow: 'md',
+                        transform: "translateY(-1px)",
+                        shadow: "md",
                       }}
                     >
-                      {getConfirmationDialogContent(
-                        estadoToChange.proyecto,
-                        estadoToChange.nuevoEstado
-                      ).confirmButtonText}
+                      {
+                        getConfirmationDialogContent(
+                          estadoToChange.proyecto,
+                          estadoToChange.nuevoEstado
+                        ).confirmButtonText
+                      }
                     </Button>
                   </AlertDialogFooter>
                 </>
