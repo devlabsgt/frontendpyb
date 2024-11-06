@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Button,
@@ -10,6 +10,10 @@ import {
   Tr,
   Th,
   Td,
+  Input,
+  Tag,
+  TagLabel,
+  TagCloseButton,
   IconButton,
   HStack,
   Text,
@@ -62,6 +66,7 @@ import VerProyecto from "./VerProyecto";
 
 // eslint-disable-next-line
 const MotionBox = motion(Box);
+
 
 // Componente para el menú de estados mejorado visualmente
 const EstadoMenu = ({ proyecto, onEstadoChange }) => {
@@ -143,8 +148,10 @@ const GestionProyectos = () => {
     const [view, setView] = useState("list");
     const [estadoFilter, setEstadoFilter] = useState("todos");
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+    const [totalPages] = useState(1);
     const itemsPerPage = 10;
+    const [tags, setTags] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
   
     // Referencias
     const cancelRef = React.useRef();
@@ -177,71 +184,58 @@ const GestionProyectos = () => {
     const toast = useToast();
     const isMobile = useBreakpointValue({ base: true, md: false });
   
-    // Función para cargar proyectos
-    const fetchProyectos = async () => {
+     // Función para cargar proyectos
+     const fetchProyectos = useCallback(async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) throw new Error("No hay token de autenticación");
-  
         const response = await fetch(`${process.env.REACT_APP_backend}/proyecto`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-  
-        if (!response.ok) throw new Error("Error al cargar proyectos");
-  
         const data = await response.json();
-  
-        if (Array.isArray(data)) {
-          const sortedProyectos = data.sort((a, b) => {
-            if (!a.numero || !b.numero) return 0;
-            const [yearA, numA] = (a.numero || "").split("-");
-            const [yearB, numB] = (b.numero || "").split("-");
-            if (!yearA || !yearB || !numA || !numB) return 0;
-            if (yearB !== yearA) {
-              return parseInt(yearB) - parseInt(yearA);
-            }
-            return parseInt(numB) - parseInt(numA);
-          });
-  
-          setProyectos(sortedProyectos);
-          applyFilters(sortedProyectos, estadoFilter);
-        } else {
-          setProyectos([]);
-          applyFilters([], estadoFilter);
-        }
+        setProyectos(data);
+        setFilteredProyectos(data);
       } catch (error) {
-        console.error("Error al cargar proyectos:", error);
-        setProyectos([]);
-        applyFilters([], estadoFilter);
         toast({
           title: "Error",
-          description: error.message,
+          description: "Error al cargar proyectos.",
           status: "error",
-          duration: 5000,
-          isClosable: true,
         });
-      } finally {
-        setIsLoading(false);
       }
-    };
+    }, [toast]);
+    
   
-    // Efecto para cargar proyectos al montar el componente
-    useEffect(() => {
-      fetchProyectos();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  useEffect(() => {
+    fetchProyectos();
+  }, [fetchProyectos]);
   
-    // Función para aplicar filtros
-    const applyFilters = (proyectosList = proyectos, estado = estadoFilter) => {
-      let filtered = [...proyectosList];
-      if (estado !== "todos") {
-        filtered = filtered.filter((proyecto) => proyecto.estado === estado);
-      }
-      setFilteredProyectos(filtered);
-      setTotalPages(Math.ceil(filtered.length / itemsPerPage));
-      setCurrentPage(1);
-    };
+
   
+// Función para aplicar los filtros
+const applyFilters = useCallback(() => {
+  let filtered = proyectos;
+  if (estadoFilter !== "todos") {
+    filtered = filtered.filter((proyecto) => proyecto.estado === estadoFilter);
+  }
+  if (tags.length > 0) {
+    filtered = filtered.filter((proyecto) =>
+      tags.every((tag) =>
+        ["nombre", "codigo", "estado", "encargado.nombre"].some((field) =>
+          (field.split(".").reduce((o, i) => o[i], proyecto) || "")
+            .toLowerCase()
+            .includes(tag.toLowerCase())
+        )
+      )
+    );
+  }
+  setFilteredProyectos(filtered);
+}, [proyectos, estadoFilter, tags]);
+
+    
+        // Efecto para cargar proyectos al montar el componente
+        useEffect(() => {
+          applyFilters();
+        }, [tags, estadoFilter, proyectos, applyFilters]);
+        
     // Funciones de paginación
     const getCurrentPageItems = () => {
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -254,11 +248,11 @@ const GestionProyectos = () => {
     };
   
     // Manejadores de eventos
-    const handleEstadoFilterChange = (e) => {
-      const newEstado = e.target.value;
-      setEstadoFilter(newEstado);
-      applyFilters(proyectos, newEstado);
-    };
+    //const handleEstadoFilterChange = (e) => {
+     // const newEstado = e.target.value;
+      //setEstadoFilter(newEstado);
+      //applyFilters(proyectos, newEstado);
+    //};
   
     const handleCreateProject = () => {
       setView("create");
@@ -295,6 +289,18 @@ const GestionProyectos = () => {
           isClosable: true,
         });
       }
+    };
+
+      // Manejadores de eventos para búsqueda por etiquetas
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && searchTerm.trim() && !tags.includes(searchTerm.trim())) {
+        setTags((prevTags) => [...prevTags, searchTerm.trim()]);
+        setSearchTerm("");
+      }
+    };
+
+    const handleDeleteTag = (tagToDelete) => {
+      setTags((prevTags) => prevTags.filter((tag) => tag !== tagToDelete));
     };
   
     const handleEstadoChange = async (proyecto, nuevoEstado) => {
@@ -634,24 +640,35 @@ const GestionProyectos = () => {
         >
           <CardBody>
             <VStack spacing={6} align="stretch">
-              {/* Header con filtros */}
-              <Flex
-                direction={{ base: "column", md: "row" }}
-                justify="space-between"
-                align={{ base: "stretch", md: "center" }}
-                gap={4}
-              >
-                <Heading
-                  size={{ base: "md", md: "lg" }}
-                  bgGradient="linear(to-r, purple.600, blue.600)"
-                  bgClip="text"
+              {/* Título separado de los filtros */}
+                <Box>
+                  <Heading
+                    size={{ base: "md", md: "lg" }}
+                    bgGradient="linear(to-r, purple.600, blue.600)"
+                    bgClip="text"
+                  >
+                    Gestión de Proyectos
+                  </Heading>
+                </Box>
+                {/* Header con filtros */}
+                <Flex
+                  direction={{ base: "column", md: "row" }}
+                  justify="space-between"
+                  align={{ base: "stretch", md: "center" }}
+                  gap={4}
                 >
-                  Gestión de Proyectos
-                </Heading>
-                <HStack spacing={4} w={{ base: "full", md: "auto" }}>
+                  <HStack spacing={2} w={{ base: "full", md: "auto" }}>
+                <Input
+                    placeholder="Buscar proyecto..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    w="500px" // Ajusta el ancho según sea necesario
+                    mr={4}
+                  />
                   <Select
                     value={estadoFilter}
-                    onChange={handleEstadoFilterChange}
+                    onChange={(e) => setEstadoFilter(e.target.value)}
                     size="md"
                     w={{ base: "full", md: "200px" }}
                     bg="white"
@@ -668,20 +685,43 @@ const GestionProyectos = () => {
                     <option value="Finalizado">Finalizados</option>
                   </Select>
                   <Button
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    bg="blue.500"
-                    color="white"
-                    _hover={{ bg: "blue.600" }}
-                    _active={{ bg: "blue.700" }}
-                    onClick={handleCreateProject}
-                    size="md"
-                    shadow="sm"
-                    w={{ base: "full", md: "auto" }}
-                  >
-                    Nuevo Proyecto
-                  </Button>
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  bg="blue.500"
+                  color="white"
+                  _hover={{ bg: "blue.600" }}
+                  _active={{ bg: "blue.700" }}
+                  size="md"
+                  shadow="sm"
+                  w={{ base: "full", md: "auto" }}
+                  onClick={handleCreateProject} // Asegúrate de que esta línea esté presente
+                >
+                  Nuevo Proyecto
+                </Button>
+
                 </HStack>
               </Flex>
+
+              <Flex ml="0%" mt={0} wrap="wrap" justifyContent="flex-start">
+              {tags.map(tag => (
+                <Tag key={tag} size="md" colorScheme="teal" borderRadius="full" mr={0} mb={0}>
+                  <TagLabel>{tag}</TagLabel>
+                  <TagCloseButton onClick={() => handleDeleteTag(tag)} />
+                </Tag>
+              ))}
+              {tags.length > 0 && (
+                <Button
+                  size="sm"
+                  colorScheme="teal"
+                  borderRadius="full"
+                  height="25px"
+                  paddingX={4}
+                  ml={2}
+                  onClick={() => setTags([])}
+                >
+                  Borrar Búsquedas
+                </Button>
+              )}
+            </Flex>
 
               {/* Lista de proyectos */}
               {filteredProyectos.length === 0 ? (
@@ -700,13 +740,19 @@ const GestionProyectos = () => {
                       : ""}
                   </Text>
                   <Button
-                    colorScheme="blue"
-                    variant="outline"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={handleCreateProject}
-                  >
-                    Crear nuevo proyecto
-                  </Button>
+  leftIcon={<Plus className="w-4 h-4" />}
+  bg="blue.500"
+  color="white"
+  _hover={{ bg: "blue.600" }}
+  _active={{ bg: "blue.700" }}
+  size="md"
+  shadow="sm"
+  w={{ base: "full", md: "auto" }}
+  onClick={handleCreateProject} // Agrega esta línea
+>
+  Nuevo Proyecto
+</Button>
+
                 </Box>
               ) : (
                 <Box>
@@ -948,11 +994,11 @@ const GestionProyectos = () => {
           </CardBody>
         </Card>
 
-        {/* Modales y Diálogos con estilos mejorados */}
-        <Modal
+{/* Modales y Diálogos con estilos mejorados */}
+<Modal
           isOpen={isEditOpen || isCreateOpen}
           onClose={view === "edit" ? handleCancelEdit : handleCancelCreate}
-          size={{ base: "full", md: "6xl" }}
+          size={{ base: "full", md: "2xl" }}
           motionPreset={isMobile ? "slideInBottom" : "slideInRight"}
         >
           <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
@@ -964,23 +1010,27 @@ const GestionProyectos = () => {
             bg="white"
             overflow="hidden"
           >
-            <ModalBody p={0}>
-              <Box
-                h={{ base: "100vh", md: "70vh" }}
-                overflowY="auto"
-                bg="gray.50"
-                sx={{
-                  "&::-webkit-scrollbar": {
-                    width: "4px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    width: "6px",
-                    bg: "gray.100",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    background: "purple.500",
-                    borderRadius: "24px",
-                  },
+            <ModalBody
+              p={0}
+              overflow="auto"
+              maxH={{ base: "calc(100vh - 80px)", md: "85vh" }}
+              >
+            <Box
+              h={{ base: "100vh", md: "auto" }}
+              overflowY="auto"
+              bg="gray.50"
+              sx={{
+                "&::-webkit-scrollbar": {
+                  width: "4px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  width: "6px",
+                  bg: "gray.100",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "purple.500",
+                  borderRadius: "24px",
+                },
                 }}
               >
                 {view === "edit" ? (
@@ -999,6 +1049,50 @@ const GestionProyectos = () => {
             </ModalBody>
           </ModalContent>
         </Modal>
+
+        <Modal
+          isOpen={isDetailsOpen}
+          onClose={onDetailsClose}
+          size={{ base: "full", md: "2xl" }}
+          motionPreset="slideInBottom"
+        >
+          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+          <ModalContent
+            maxW={{ base: "100%", md: "800px" }}
+            minH={{ base: "100vh", md: "auto" }}
+            m={{ base: 0, md: "24px auto" }}
+            borderRadius={{ base: 0, md: "xl" }}
+            bg="white"
+            overflow="hidden"
+          >
+            <ModalHeader
+              borderBottom="1px"
+              borderColor="purple.100"
+              bg="purple.50"
+              px={4}
+              py={3}
+              color="purple.700"
+            >
+              Detalles del Proyecto
+              <ModalCloseButton color="purple.500" />
+            </ModalHeader>
+            <ModalBody
+              p={0}
+              overflow="auto"
+              maxH={{ base: "calc(100vh - 80px)", md: "85vh" }}
+            >
+              {selectedProjectDetails && (
+                <VerProyecto
+                  proyecto={selectedProjectDetails}
+                  onBack={onDetailsClose}
+                />
+              )}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+
+
+
 
         <Modal
           isOpen={isDetailsOpen}
@@ -1163,5 +1257,6 @@ const GestionProyectos = () => {
     </Container>
   );
 };
+
 
 export default GestionProyectos;
