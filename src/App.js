@@ -2,17 +2,45 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "./componentes/login/Login";
 import Dashboard from "./componentes/dashboard/Dashboard";
+import Verificacion from "./componentes/verificacion/Verificacion";
+import Restablecer from "./componentes/restablecer/Restablecer";
 import { jwtDecode } from "jwt-decode";
-import Swal from "sweetalert2"; // Importa SweetAlert2
+import Swal from "sweetalert2";
+import axios from "axios"; // Importa axios para hacer solicitudes
 import Home from "./componentes/home/homes";
 
-// Componente para proteger las rutas privadas
 const PrivateRoute = ({ children }) => {
   const location = useLocation();
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    const handleTokenExpiration = () => {
+    const handleTokenExpiration = async () => {
+      // Intenta decodificar el token para obtener el ID del usuario
+      let userId = null;
+      if (token) {
+        try {
+          const decodedToken = jwtDecode(token);
+          userId = decodedToken.id; // Ajusta esto según tu payload
+        } catch (error) {
+          console.error("Error al decodificar el token", error);
+        }
+      }
+
+      // Intenta cambiar el estado de sesión a false en el servidor
+      if (userId) {
+        try {
+          await axios.put(
+            `${process.env.REACT_APP_backend}/usuario/${userId}/cerrarsesion`
+          );
+        } catch (error) {
+          console.error(
+            "Error al actualizar el estado de sesión en el servidor",
+            error
+          );
+        }
+      }
+
+      // Remueve el token del almacenamiento local y muestra el mensaje de expiración
       localStorage.removeItem("token");
       Swal.fire({
         title: "Sesión expirada",
@@ -20,7 +48,7 @@ const PrivateRoute = ({ children }) => {
         icon: "info",
         confirmButtonText: "Aceptar",
       }).then(() => {
-        window.location.href = "/"; // Redirige al inicio de sesión
+        window.location.href = "/";
       });
     };
 
@@ -28,18 +56,16 @@ const PrivateRoute = ({ children }) => {
       try {
         const decodedToken = jwtDecode(token);
         const currentTime = Math.floor(Date.now() / 1000);
-        console.log("Horra actual>> " + currentTime);
         const timeUntilExpiration = (decodedToken.exp - currentTime) * 1000;
 
         if (timeUntilExpiration > 0) {
-          // Configura el temporizador para que expire en el momento exacto
           const timer = setTimeout(handleTokenExpiration, timeUntilExpiration);
-          return () => clearTimeout(timer); // Limpia el temporizador si el componente se desmonta
+          return () => clearTimeout(timer);
         } else {
-          handleTokenExpiration(); // Si el token ya ha expirado, cierra sesión de inmediato
+          handleTokenExpiration();
         }
       } catch (error) {
-        handleTokenExpiration(); // Si hay un error al decodificar, cierra sesión
+        handleTokenExpiration();
       }
     }
   }, [token]);
@@ -54,10 +80,8 @@ const PrivateRoute = ({ children }) => {
 function App() {
   return (
     <Routes>
-      {/* Ruta para iniciar sesión */}
       <Route path="/" element={<Home />} />
       <Route path="/inicio" element={<Login />} />
-      {/* Ruta protegida para el dashboard */}
       <Route
         path="/dashboard"
         element={
@@ -66,9 +90,10 @@ function App() {
           </PrivateRoute>
         }
       />
+      <Route path="/verificar" element={<Verificacion />} />
+      <Route path="/restablecer" element={<Restablecer />} />
     </Routes>
   );
 }
 
 export default App;
-//TEST

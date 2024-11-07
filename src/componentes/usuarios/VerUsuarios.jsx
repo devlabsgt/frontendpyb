@@ -9,6 +9,13 @@ import {
   TabPanels,
   Tab,
   TabPanel,
+  Flex,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton,
+  Select,
   Table,
   TableContainer,
   Thead,
@@ -17,57 +24,55 @@ import {
   Th,
   Td,
   Tag,
-  TagCloseButton,
-  TagLabel,
-  Flex,
 } from "@chakra-ui/react";
-import { ViewIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 import axios from "axios";
 import { ModalVerUsuario, ModalAddUsuario } from "./ModalsUsuarios";
 import Swal from "sweetalert2";
-import { Select } from "@chakra-ui/react";
 
 const VerUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [filteredUsuarios, setFilteredUsuarios] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [tags, setTags] = useState([]);
   const [selectedUsuario, setSelectedUsuario] = useState(null);
   const [isActiveTab, setIsActiveTab] = useState(true);
-  const [activeCount, setInactiveCount] = useState(0);
-  const [inactiveCount, setActiveCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [inactiveCount, setInactiveCount] = useState(0);
   const [selectedRole, setSelectedRole] = useState("");
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
 
-  const roles = ["Administrador", "Encargado", "Usuario"];
+  const roles = ["Administrador", "Encargado"];
 
+  // Obtener usuario actual del token
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
+    const userProfile = JSON.parse(atob(token.split(".")[1])); // Extrae el payload del token
     return {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
+      currentUser: userProfile.userId, // Extrae el ID del usuario
     };
   };
 
   const obtenerUsuarios = async (isActive) => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_backend}/usuario`, getAuthHeaders());
-      // Ensure we have valid data before filtering
+      const { headers } = getAuthHeaders();
+      const response = await axios.get(`${process.env.REACT_APP_backend}/usuario`, { headers });
       const validUsers = Array.isArray(response.data) ? response.data : [];
       const usuariosFiltrados = validUsers
-        .filter(user => {
-          // Safely check if user object and its properties exist
-          return user && 
-                 typeof user.activo === 'boolean' && 
-                 user.activo === isActive && 
-                 user.rol && 
-                 user.rol !== "Super" &&
-                 user.nombre; // Ensure nombre exists for sorting
-        })
-        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-      
+        .filter(
+          (user) =>
+            user &&
+            typeof user.activo === "boolean" &&
+            user.activo === isActive &&
+            user.rol &&
+            user.rol !== "Super" &&
+            user.nombre
+        )
+        .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
+
       setUsuarios(usuariosFiltrados);
       setFilteredUsuarios(usuariosFiltrados);
     } catch (error) {
@@ -78,11 +83,12 @@ const VerUsuarios = () => {
 
   const obtenerContadorUsuarios = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_backend}/usuario`, getAuthHeaders());
+      const { headers } = getAuthHeaders();
+      const response = await axios.get(`${process.env.REACT_APP_backend}/usuario`, { headers });
       const validUsers = Array.isArray(response.data) ? response.data : [];
-      
-      setActiveCount(validUsers.filter(user => user && user.activo === true).length);
-      setInactiveCount(validUsers.filter(user => user && user.activo === false).length);
+
+      setActiveCount(validUsers.filter((user) => user && user.activo === true).length);
+      setInactiveCount(validUsers.filter((user) => user && user.activo === false).length);
     } catch (error) {
       console.error("Error al obtener el contador de usuarios", error);
     }
@@ -91,7 +97,6 @@ const VerUsuarios = () => {
   useEffect(() => {
     obtenerUsuarios(isActiveTab);
     obtenerContadorUsuarios();
-    // eslint-disable-next-line
   }, [isActiveTab]);
 
   const handleVerUsuario = (usuario) => {
@@ -101,8 +106,16 @@ const VerUsuarios = () => {
     }
   };
 
-  const handleInactivarUsuario = async (usuarioId) => {
-    if (!usuarioId) return;
+const handleInactivarUsuario = async (usuarioId) => {
+  try {
+    const { headers } = getAuthHeaders();
+    const usuario = await axios.get(`${process.env.REACT_APP_backend}/usuario/${usuarioId}`, { headers });
+
+    // Verifica si el usuario está en sesión
+    if (usuario.data.sesion) {
+      Swal.fire("Error", "No puedes inactivar a un usuario que está en sesión.", "error");
+      return;
+    }
 
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -116,25 +129,18 @@ const VerUsuarios = () => {
     });
 
     if (result.isConfirmed) {
-      try {
-        await axios.put(
-          `${process.env.REACT_APP_backend}/usuario/${usuarioId}`,
-          { activo: false },
-          getAuthHeaders()
-        );
-        obtenerUsuarios(isActiveTab);
-        obtenerContadorUsuarios();
-        Swal.fire("Inactivado!", "El usuario ha sido inactivado.", "success");
-      } catch (error) {
-        console.error("Error al inactivar el usuario", error);
-        Swal.fire("Error", "No se pudo inactivar al usuario.", "error");
-      }
+      await axios.put(`${process.env.REACT_APP_backend}/usuario/${usuarioId}`, { activo: false }, { headers });
+      obtenerUsuarios(isActiveTab); // Actualizar la lista de usuarios
+      obtenerContadorUsuarios();    // Actualizar el contador
+      Swal.fire("Inactivado!", "El usuario ha sido inactivado.", "success");
     }
-  };
+  } catch (error) {
+    console.error("Error al inactivar el usuario", error);
+    Swal.fire("Error", "No se pudo inactivar al usuario.", "error");
+  }
+};
 
   const handleActivarUsuario = async (usuarioId) => {
-    if (!usuarioId) return;
-    
     const result = await Swal.fire({
       title: "¿Estás seguro?",
       text: "Esta acción activará al usuario y le otorgará permisos nuevamente.",
@@ -148,11 +154,8 @@ const VerUsuarios = () => {
 
     if (result.isConfirmed) {
       try {
-        await axios.put(
-          `${process.env.REACT_APP_backend}/usuario/${usuarioId}`,
-          { activo: true },
-          getAuthHeaders()
-        );
+        const { headers } = getAuthHeaders();
+        await axios.put(`${process.env.REACT_APP_backend}/usuario/${usuarioId}`, { activo: true }, { headers });
         obtenerUsuarios(isActiveTab);
         obtenerContadorUsuarios();
         Swal.fire("Activado!", "El usuario ha sido activado.", "success");
@@ -163,42 +166,28 @@ const VerUsuarios = () => {
     }
   };
 
-  // Safe filter function that checks for undefined values
-  const safeFilter = (usuario, tag) => {
-    if (!usuario) return false;
-    
-    return ["nombre", "email", "telefono", "rol"].some(field => {
-      const value = usuario[field];
-      return value && value.toString().toLowerCase().includes(tag.toLowerCase());
-    });
+  const handleReenviarVerificacion = async (usuarioId, usuarioEmail) => {
+    try {
+      const { headers } = getAuthHeaders();
+      await axios.post(`${process.env.REACT_APP_backend}/reenviar-verificacion`, { email: usuarioEmail }, { headers });
+      Swal.fire("Enviado", "Correo de verificación reenviado exitosamente.", "success");
+    } catch (error) {
+      console.error("Error al reenviar el correo de verificación", error);
+      Swal.fire("Error", "No se pudo reenviar el correo de verificación.", "error");
+    }
   };
 
   useEffect(() => {
-    if (selectedRole || tags.length > 0) {
-      const filtered = usuarios.filter(usuario => {
-        const matchesRole = !selectedRole || (usuario && usuario.rol === selectedRole);
-        const matchesTags = tags.length === 0 || tags.every(tag => safeFilter(usuario, tag));
-        return matchesRole && matchesTags;
-      });
-      setFilteredUsuarios(filtered);
-    } else {
-      setFilteredUsuarios(usuarios);
-    }
-  }, [selectedRole, tags, usuarios]);
+    const filtered = usuarios.filter((usuario) => {
+      const matchesRole = !selectedRole || (usuario && usuario.rol === selectedRole);
+      const matchesSearch = !searchTerm || usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesRole && matchesSearch;
+    });
+    setFilteredUsuarios(filtered);
+  }, [selectedRole, searchTerm, usuarios]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && searchTerm.trim()) {
-      setTags(prevTags => [...prevTags, searchTerm.trim()]);
-      setSearchTerm("");
-    }
-  };
-
-  const handleDeleteTag = (tagToDelete) => {
-    setTags(prevTags => prevTags.filter(tag => tag !== tagToDelete));
   };
 
   const handleRoleChange = (e) => {
@@ -207,25 +196,18 @@ const VerUsuarios = () => {
 
   return (
     <Box p={5} bg="gray.50" borderRadius="lg" boxShadow="base">
-      <Flex mb={2} alignItems="center" width="100%">
-        <Button colorScheme="blue" onClick={onAddOpen} mr={4}>
+      <Flex mb={2} alignItems="center" width="100%" gap={4} flexWrap="nowrap">
+        <Button colorScheme="blue" onClick={onAddOpen}>
           Añadir Usuario
         </Button>
         <Input
           placeholder="Buscar usuario..."
           value={searchTerm}
           onChange={handleSearchChange}
-          onKeyDown={handleKeyDown}
           w="50%"
-          mr={4}
         />
-        <Select
-          placeholder="Selecciona un rol"
-          value={selectedRole}
-          onChange={handleRoleChange}
-          w="25%"
-        >
-          {roles.map(rol => (
+        <Select placeholder="Selecciona un rol" value={selectedRole} onChange={handleRoleChange} w="25%">
+          {roles.map((rol) => (
             <option key={rol} value={rol}>
               {rol}
             </option>
@@ -233,93 +215,70 @@ const VerUsuarios = () => {
         </Select>
       </Flex>
 
-      <Flex ml="15%" mt={2} wrap="wrap" justifyContent="flex-start">
-    {tags.map(tag => (
-      <Tag key={tag} size="md" colorScheme="teal" borderRadius="full" mr={2} mb={2}>
-        <TagLabel>{tag}</TagLabel>
-        <TagCloseButton onClick={() => handleDeleteTag(tag)} />
-      </Tag>
-    ))}
-    {tags.length > 0 && (
-      <Button
-        size="sm"
-        colorScheme="teal"
-        borderRadius="full"
-        height="25px"
-        paddingX={4}
-        ml={2}
-        onClick={() => setTags([])}
-      >
-        Borrar Búsquedas
-      </Button>
-    )}
-  </Flex>
-
-      <br />
-
-      <Tabs onChange={index => setIsActiveTab(index === 0)}>
+      <Tabs onChange={(index) => setIsActiveTab(index === 0)}>
         <TabList>
-          <Tab _selected={{ color: "white", bg: "blue.700" }}>
-            Activos ({activeCount})
-          </Tab>
-          <Tab _selected={{ color: "white", bg: "red.500" }}>
-            Inactivos ({inactiveCount})
-          </Tab>
+          <Tab _selected={{ color: "white", bg: "blue.700" }}>Activos ({activeCount - 1})</Tab>
+          <Tab _selected={{ color: "white", bg: "red.500" }}>Inactivos ({inactiveCount})</Tab>
         </TabList>
 
         <TabPanels>
-          {[true, false].map((isActive, index) => (
-            <TabPanel key={index}>
-              <TableContainer borderRadius="md" boxShadow="md" bg="white" p={4}>
-                <Table variant="striped" colorScheme="gray" size="md">
-                  <Thead>
-                    <Tr bg={isActive ? "blue.300" : "red.900"}>
-                      <Th color="white">Nombre</Th>
-                      <Th color="white">Email</Th>
-                      <Th color="white">Teléfono</Th>
-                      <Th color="white">Rol</Th>
-                      <Th color="white">Acciones</Th>
+          <TabPanel>
+            <TableContainer borderRadius="md" boxShadow="md" bg="white" p={0}>
+              <Table variant="striped" colorScheme="gray" size="md">
+                <Thead>
+                  <Tr bg="blue.300">
+                    <Th color="white" position="sticky" left={0} zIndex={1} bg="blue.300" width="50px">
+                      No.
+                    </Th>
+                    <Th color="white" position="sticky" left="50px" zIndex={1} bg="blue.300" width="150px">
+                      Nombre
+                    </Th>
+                    <Th color="white">Email</Th>
+                    <Th color="white">Teléfono</Th>
+                    <Th color="white">Rol</Th>
+                    <Th color="white">Acciones</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {filteredUsuarios.map((usuario, index) => (
+                    <Tr key={usuario._id} _hover={{ bg: "gray.100" }}>
+                      <Td position="sticky" left={0} bg="white" fontWeight="bold" width="50px">
+                        {index + 1}
+                      </Td>
+                      <Td position="sticky" left="50px" bg="white" fontWeight="bold" width="150px">
+                        {usuario.nombre}
+                      </Td>
+                      <Td>{usuario.email}</Td>
+                      <Td>{usuario.telefono}</Td>
+                      <Td>
+                        <Tag colorScheme={usuario.rol === "Administrador" ? "purple" : "green"}>{usuario.rol}</Tag>
+                      </Td>
+                      <Td>
+                        <Menu>
+                          <MenuButton as={IconButton} icon={<ChevronDownIcon />} variant="outline" colorScheme="blue" />
+                          <MenuList>
+                            <MenuItem onClick={() => handleVerUsuario(usuario)}>Editar</MenuItem>
+                            <MenuItem
+                              onClick={() =>
+                                isActiveTab ? handleInactivarUsuario(usuario._id) : handleActivarUsuario(usuario._id)
+                              }
+                            >
+                              {isActiveTab ? "Inactivar" : "Activar"}
+                            </MenuItem>
+                            {!usuario.verificado && (
+                              <MenuItem onClick={() => handleReenviarVerificacion(usuario._id, usuario.email)}>
+                                Reenviar Verificación
+                              </MenuItem>
+                            )}
+                          </MenuList>
+                        </Menu>
+                      </Td>
                     </Tr>
-                  </Thead>
-                  <Tbody>
-                    {filteredUsuarios.map(usuario => (
-                      <Tr key={usuario._id} _hover={{ bg: "gray.100" }}>
-                        <Td fontWeight="bold">{usuario.nombre}</Td>
-                        <Td>{usuario.email}</Td>
-                        <Td>{usuario.telefono}</Td>
-                        <Td>
-                          <Tag colorScheme={usuario.rol === "Administrador" ? "purple" : "green"}>
-                            {usuario.rol}
-                          </Tag>
-                        </Td>
-                        <Td>
-                          <Button
-                            leftIcon={<ViewIcon />}
-                            onClick={() => handleVerUsuario(usuario)}
-                            colorScheme="blue"
-                            size="sm"
-                            mr={2}
-                          >
-                            Ver
-                          </Button>
-                          <Button
-                            colorScheme={isActive ? "red" : "green"}
-                            size="sm"
-                            onClick={() => isActive 
-                              ? handleInactivarUsuario(usuario._id)
-                              : handleActivarUsuario(usuario._id)
-                            }
-                          >
-                            {isActive ? "Inactivar" : "Activar"}
-                          </Button>
-                        </Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            </TabPanel>
-          ))}
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </TabPanel>
         </TabPanels>
       </Tabs>
 

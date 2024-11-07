@@ -5,7 +5,6 @@ import {
   Image,
   Flex,
   Spacer,
-  useDisclosure,
   VStack,
   Drawer,
   DrawerBody,
@@ -15,15 +14,23 @@ import {
   DrawerCloseButton,
   IconButton,
   useBreakpointValue,
-  Heading,
 } from "@chakra-ui/react";
-import { FaUser, FaSignOutAlt, FaBars, FaHeartbeat, FaHome, FaProjectDiagram } from "react-icons/fa";
+import {
+  FaUser,
+  FaSignOutAlt,
+  FaBars,
+  FaHeartbeat,
+  FaHome,
+  FaProjectDiagram,
+  FaCog,
+} from "react-icons/fa";
 import logo from '../../img/logo.png';
 import VerUsuarios from '../usuarios/VerUsuarios';
 import VerBeneficiarios from '../beneficiarios/VerBeneficiarios';
-import ResumenInicio from "../resumeninicio/ResumenInicio"; // Importar el nuevo componente
+import ResumenInicio from "../resumeninicio/ResumenInicio";
 import MiPerfil from './MiPerfil';
-import { jwtDecode } from 'jwt-decode';
+import MailConfig from './MailConfig';
+import {jwtDecode} from 'jwt-decode';
 import Swal from 'sweetalert2';
 import GestionProyectos from "../proyectos/GestionProyectos";
 
@@ -34,6 +41,7 @@ const Dashboard = () => {
   const token = localStorage.getItem('token');
   const decodedToken = token ? jwtDecode(token) : null;
   const userRole = decodedToken ? decodedToken.rol : null;
+  const userName = decodedToken ? decodedToken.nombre : null;
 
   const obtenerBeneficiarios = async () => {
     try {
@@ -61,15 +69,34 @@ const Dashboard = () => {
       cancelButtonText: "Cancelar"
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({
-          title: "Cerrar sesión",
-          text: "Has cerrado sesión. ¡Hasta la próxima!",
-          icon: "success",
-          confirmButtonText: "Aceptar"
-        }).then(() => {
-          localStorage.removeItem('token');
-          window.location.href = '/';
-        });
+        const userId = decodedToken?.id;
+
+        // Cambia el estado de `sesion` a false en la base de datos
+        fetch(`${process.env.REACT_APP_backend}/usuario/${userId}/cerrarsesion`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+          .then(response => {
+            if (response.ok) {
+              Swal.fire({
+                title: "Cerrar sesión",
+                text: "Has cerrado sesión. ¡Hasta la próxima!",
+                icon: "success",
+                confirmButtonText: "Aceptar"
+              }).then(() => {
+                localStorage.removeItem('token');
+                window.location.href = '/';
+              });
+            } else {
+              Swal.fire("Error", "No se pudo cerrar la sesión correctamente.", "error");
+            }
+          })
+          .catch(error => {
+            console.error("Error al cerrar sesión:", error);
+            Swal.fire("Error", "Hubo un problema al cerrar sesión. Intenta de nuevo.", "error");
+          });
       }
     });
   };
@@ -81,10 +108,12 @@ const Dashboard = () => {
     <Box w="100vw" h="100vh" bg="white">
       <Flex as="nav" bg="white" p="4" boxShadow="md" alignItems="center">
         <Image src={logo} alt="Logo" maxH="50px" objectFit="contain" />
+        <Box ml={3}>
+          {userName} ({userRole})
+        </Box>
         <Spacer />
 
         {isMobile ? (
-
           <IconButton
             icon={<FaBars />}
             aria-label="Abrir menú"
@@ -129,6 +158,17 @@ const Dashboard = () => {
                 onClick={() => setView('usuarios')}
               >
                 Ver Usuarios
+              </Button>
+            )}
+            {userRole === 'Super' && (
+              <Button
+                colorScheme="yellow"
+                size="sm"
+                mr="2.5"
+                leftIcon={<FaCog />}
+                onClick={() => setView('mailConfig')}
+              >
+                Configuración de Correo
               </Button>
             )}
             <Button
@@ -206,6 +246,19 @@ const Dashboard = () => {
               >
                 Ver Beneficiarios
               </Button>
+              {userRole === 'Super' && (
+                <Button
+                  w="100%"
+                  colorScheme="yellow"
+                  leftIcon={<FaCog />}
+                  onClick={() => {
+                    setView('mailConfig');
+                    toggleDrawer();
+                  }}
+                >
+                  Configuración de Correo
+                </Button>
+              )}
               <Button
                 w="100%"
                 colorScheme="green"
@@ -236,6 +289,7 @@ const Dashboard = () => {
         {view === 'beneficiarios' && <VerBeneficiarios />}
         {view === 'perfil' && <MiPerfil />}
         {view === 'proyectos' && <GestionProyectos />}
+        {view === 'mailConfig' && <MailConfig />}
       </Box>
     </Box>
   );
