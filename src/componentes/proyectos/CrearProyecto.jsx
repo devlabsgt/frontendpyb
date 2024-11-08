@@ -21,7 +21,6 @@ import {
   useToast,
   Card,
   CardBody,
-  Progress,
   VStack,
   HStack,
   Image,
@@ -41,6 +40,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import QuickCreateSelect from "./QuickCreateSelect";
+import ActividadesForm from "./ActividadesForm";
+import UbicacionForm from "./UbicacionForm";
 
 const MotionBox = motion(Box);
 
@@ -50,15 +51,22 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
   const [formData, setFormData] = useState({
     nombre: "",
     encargado: "",
-    presupuesto: "",
+    presupuesto: 0,
     fechaInicio: "",
     fechaFinal: "",
     objetivosGlobales: [],
     lineasEstrategicas: [],
-    donantes: [{ donante: "", porcentaje: 0 }],
+    donantes: [
+      {
+        donante: "",
+        montoAportado: 0,
+        porcentaje: 0,
+      },
+    ],
     lugaresAPriorizar: [
       { departamento: "", municipio: "", localidad: "", prioridad: 1 },
     ],
+    actividades: [],
     implicacionMunicipalidades: "Media",
     seguimiento: { frecuencia: "mensual", requiereVisita: false },
     nivelAvance: 0,
@@ -82,12 +90,25 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
   const [previewImages, setPreviewImages] = useState([]);
   const toast = useToast();
 
+  const procesarBeneficiariosActividad = (actividad) => {
+    if (!actividad.beneficiariosAsociados) return [];
+    return actividad.beneficiariosAsociados.map((beneficiario) => ({
+      beneficiario:
+        typeof beneficiario === "string"
+          ? beneficiario
+          : beneficiario.beneficiario.toString(),
+      estado: "Activo",
+      fechaIngreso: new Date().toISOString(),
+    }));
+  };
+
   const steps = [
     "Información Básica",
     "Objetivos y Estrategias",
     "Donantes",
     "Ubicaciones",
-    "Beneficiarios y Avance",
+    "Actividades", // Nueva pestaña
+    //"Beneficiarios y Avance",
     "Evidencias",
     "Configuración Final",
   ];
@@ -222,23 +243,81 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
   // 5. Manejadores específicos para donantes y lugares
   const handleDonanteChange = (index, field, value) => {
     const newDonantes = [...formData.donantes];
-    newDonantes[index][field] = value;
+
+    if (field === "montoAportado") {
+      const nuevoMonto = Number(value);
+      const otrosAportes = newDonantes.reduce(
+        (sum, d, i) => (i !== index ? sum + Number(d.montoAportado || 0) : sum),
+        0
+      );
+
+      if (otrosAportes + nuevoMonto > formData.presupuesto) {
+        toast({
+          title: "Error",
+          description:
+            "El total de aportes no puede exceder el presupuesto total",
+          status: "error",
+          duration: 3000,
+        });
+        return;
+      }
+
+      newDonantes[index] = {
+        ...newDonantes[index],
+        montoAportado: nuevoMonto,
+        porcentaje: (nuevoMonto / Number(formData.presupuesto)) * 100,
+      };
+    } else {
+      newDonantes[index] = {
+        ...newDonantes[index],
+        [field]: value,
+      };
+    }
+
     handleInputChange("donantes", newDonantes);
+
+    // Validar el total de aportes
+    const totalAportes = newDonantes.reduce(
+      (sum, d) => sum + Number(d.montoAportado || 0),
+      0
+    );
+
+    if (totalAportes !== Number(formData.presupuesto)) {
+      setValidationStatus((prev) => ({
+        ...prev,
+        donantes: {
+          isValid: false,
+          message: `El total de aportes (Q${totalAportes}) debe ser igual al presupuesto total (Q${formData.presupuesto})`,
+        },
+      }));
+    } else {
+      setValidationStatus((prev) => ({
+        ...prev,
+        donantes: { isValid: true, message: null },
+      }));
+    }
   };
 
-  const handleLugarChange = (index, field, value) => {
+  const handleLugarChange = (index, nuevoLugar) => {
     const newLugares = [...formData.lugaresAPriorizar];
-    newLugares[index] = {
-      ...newLugares[index],
-      [field]: field === "prioridad" ? value || 1 : value,
-    };
-    handleInputChange("lugaresAPriorizar", newLugares);
+    newLugares[index] = nuevoLugar;
+    setFormData((prev) => ({
+      ...prev,
+      lugaresAPriorizar: newLugares,
+    }));
   };
 
   const agregarDonante = () => {
     setFormData((prev) => ({
       ...prev,
-      donantes: [...prev.donantes, { donante: "", porcentaje: 0 }],
+      donantes: [
+        ...prev.donantes,
+        {
+          donante: "",
+          montoAportado: 0,
+          porcentaje: 0,
+        },
+      ],
     }));
   };
 
@@ -397,153 +476,119 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
     </Flex>
   );
 
-  const renderDonantes = () => (
-    <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      <Stack spacing={4}>
-        {formData.donantes.map((donante, index) => (
-          <Flex key={index} gap={4} align="flex-end">
-            <Box flex={1}>
-              <QuickCreateSelect
-                options={datos.donantes}
-                value={donante.donante}
-                onChange={(value) =>
-                  handleDonanteChange(index, "donante", value)
-                }
-                placeholder="Seleccione un donante"
-                type="donante"
-                error={validationStatus[`donante_${index}`]?.message}
-                onNewOption={(newDonante) => {
-                  setDatos((prev) => ({
-                    ...prev,
-                    donantes: [...prev.donantes, newDonante],
-                  }));
-                }}
-              />
-            </Box>
-            <FormControl w="32">
-              <FormLabel>Porcentaje</FormLabel>
-              <NumberInput
-                value={donante.porcentaje}
-                onChange={(value) =>
-                  handleDonanteChange(index, "porcentaje", Number(value))
-                }
-                min={0}
-                max={100}
-              >
-                <NumberInputField />
-              </NumberInput>
-            </FormControl>
-            {index > 0 && (
-              <IconButton
-                icon={<Trash2 />}
-                onClick={() => removerDonante(index)}
-                colorScheme="red"
-                variant="ghost"
-                size="sm"
-                aria-label="Eliminar donante"
-              />
-            )}
-          </Flex>
-        ))}
+  const renderDonantes = () => {
+    // Calcular totales
+    const totalAportes = formData.donantes.reduce(
+      (sum, d) => sum + Number(d.montoAportado || 0),
+      0
+    );
 
-        <Button
-          leftIcon={<Plus />}
-          onClick={agregarDonante}
-          variant="ghost"
-          colorScheme="blue"
-          size="sm"
-          w="fit-content"
-        >
-          Agregar Donante
-        </Button>
+    return (
+      <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+        <Stack spacing={4}>
+          <Text fontWeight="bold">
+            Presupuesto Total: Q{formData.presupuesto.toLocaleString()}
+          </Text>
+          {formData.donantes.map((donante, index) => (
+            <Flex key={index} gap={4} align="flex-end">
+              <Box flex={1}>
+                <QuickCreateSelect
+                  options={datos.donantes}
+                  value={donante.donante}
+                  onChange={(value) =>
+                    handleDonanteChange(index, "donante", value)
+                  }
+                  placeholder="Seleccione un donante"
+                  type="donante"
+                  error={validationStatus[`donante_${index}`]?.message}
+                />
+              </Box>
+              <FormControl w="32">
+                <FormLabel>Monto</FormLabel>
+                <NumberInput
+                  value={donante.montoAportado}
+                  onChange={(value) =>
+                    handleDonanteChange(index, "montoAportado", Number(value))
+                  }
+                  min={0}
+                  max={
+                    formData.presupuesto -
+                    formData.donantes.reduce(
+                      (sum, d, i) =>
+                        i !== index ? sum + Number(d.montoAportado || 0) : sum,
+                      0
+                    )
+                  }
+                >
+                  <NumberInputField />
+                </NumberInput>
+              </FormControl>
+              <Text w="32" textAlign="right">
+                {((donante.montoAportado / formData.presupuesto) * 100).toFixed(
+                  2
+                )}
+                %
+              </Text>
+              {index > 0 && (
+                <IconButton
+                  icon={<Trash2 />}
+                  onClick={() => removerDonante(index)}
+                  colorScheme="red"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Eliminar donante"
+                />
+              )}
+            </Flex>
+          ))}
 
-        {validationStatus.donantes?.message && (
-          <Alert status="error">
+          <Button
+            leftIcon={<Plus />}
+            onClick={agregarDonante}
+            variant="ghost"
+            colorScheme="blue"
+            size="sm"
+            w="fit-content"
+          >
+            Agregar Donante
+          </Button>
+
+          <Alert
+            status={
+              totalAportes === Number(formData.presupuesto)
+                ? "success"
+                : "warning"
+            }
+          >
             <AlertIcon />
-            <Text fontSize="sm">{validationStatus.donantes.message}</Text>
+            <Box>
+              <Text>
+                Total Asignado: Q{totalAportes.toLocaleString()}(
+                {((totalAportes / formData.presupuesto) * 100).toFixed(2)}%)
+              </Text>
+              <Text>
+                Restante por Asignar: Q
+                {(Number(formData.presupuesto) - totalAportes).toLocaleString()}
+              </Text>
+            </Box>
           </Alert>
-        )}
-      </Stack>
-    </MotionBox>
-  );
+        </Stack>
+      </MotionBox>
+    );
+  };
 
   const renderUbicaciones = () => (
     <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
       <Stack spacing={6}>
         {formData.lugaresAPriorizar.map((lugar, index) => (
-          <Grid
+          <UbicacionForm
             key={index}
-            templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }}
-            gap={4}
-          >
-            <GridItem>
-              <FormControl>
-                <FormLabel>Departamento</FormLabel>
-                <Input
-                  value={lugar.departamento}
-                  onChange={(e) =>
-                    handleLugarChange(index, "departamento", e.target.value)
-                  }
-                  placeholder="Departamento"
-                />
-              </FormControl>
-            </GridItem>
-
-            <GridItem>
-              <FormControl>
-                <FormLabel>Municipio</FormLabel>
-                <Input
-                  value={lugar.municipio}
-                  onChange={(e) =>
-                    handleLugarChange(index, "municipio", e.target.value)
-                  }
-                  placeholder="Municipio"
-                />
-              </FormControl>
-            </GridItem>
-
-            <GridItem>
-              <FormControl>
-                <FormLabel>Localidad</FormLabel>
-                <Input
-                  value={lugar.localidad}
-                  onChange={(e) =>
-                    handleLugarChange(index, "localidad", e.target.value)
-                  }
-                  placeholder="Localidad"
-                />
-              </FormControl>
-            </GridItem>
-
-            <GridItem>
-              <Flex gap={2} alignItems="flex-end" h="full">
-                <FormControl flex={1}>
-                  <FormLabel>Prioridad</FormLabel>
-                  <NumberInput
-                    value={lugar.prioridad}
-                    onChange={(valueString, valueNumber) =>
-                      handleLugarChange(index, "prioridad", valueNumber)
-                    }
-                    min={1}
-                    max={5}
-                    defaultValue={1}
-                  >
-                    <NumberInputField />
-                  </NumberInput>
-                </FormControl>
-                {index > 0 && (
-                  <IconButton
-                    icon={<Trash2 />}
-                    onClick={() => removerLugar(index)}
-                    colorScheme="red"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Eliminar ubicación"
-                  />
-                )}
-              </Flex>
-            </GridItem>
-          </Grid>
+            lugar={lugar}
+            index={index}
+            onUpdate={handleLugarChange}
+            onRemove={removerLugar}
+            error={errores[`lugar_${index}`]}
+          />
         ))}
 
         <Button
@@ -560,7 +605,31 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
     </MotionBox>
   );
 
-  // Agregar estas funciones después de renderUbicaciones y antes de renderCurrentStep
+  const renderActividades = () => (
+    <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      <ActividadesForm
+        presupuestoTotal={Number(formData.presupuesto)}
+        actividades={formData.actividades}
+        onActividadesChange={(actividades) => {
+          setFormData((prev) => ({
+            ...prev,
+            actividades,
+          }));
+        }}
+        beneficiariosDisponibles={datos.beneficiarios}
+        fechasProyecto={{
+          fechaInicio: formData.fechaInicio || "", // Asegúrate de que tenga un valor por defecto
+          fechaFinal: formData.fechaFinal || "", // Asegúrate de que tenga un valor por defecto
+        }}
+        onAvanceChange={(nuevoAvance) => {
+          setFormData((prev) => ({
+            ...prev,
+            nivelAvance: nuevoAvance,
+          }));
+        }}
+      />
+    </MotionBox>
+  );
 
   const renderInformacionBasica = () => (
     <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -612,7 +681,9 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
             <FormLabel>Presupuesto</FormLabel>
             <NumberInput
               value={formData.presupuesto}
-              onChange={(value) => handleInputChange("presupuesto", value)}
+              onChange={(value) =>
+                handleInputChange("presupuesto", Number(value))
+              }
               min={0}
             >
               <NumberInputField placeholder="0.00" />
@@ -701,79 +772,79 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
     </MotionBox>
   );
 
-  const renderBeneficiariosAvance = () => (
-    <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-      <Stack spacing={6}>
-        <FormControl
-          isInvalid={validationStatus.nivelAvance?.isValid === false}
-        >
-          <FormLabel>Nivel de Avance</FormLabel>
-          <HStack spacing={4} align="center">
-            <NumberInput
-              value={formData.nivelAvance}
-              onChange={(value) =>
-                handleInputChange("nivelAvance", Number(value))
-              }
-              min={0}
-              max={100}
-              w="100px"
-            >
-              <NumberInputField />
-            </NumberInput>
-            <Progress
-              value={formData.nivelAvance}
-              w="full"
-              colorScheme="green"
-              hasStripe
-            />
-            <Text>{formData.nivelAvance}%</Text>
-          </HStack>
-        </FormControl>
+  // const renderBeneficiariosAvance = () => (
+  //   <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+  //     <Stack spacing={6}>
+  //       <FormControl
+  //         isInvalid={validationStatus.nivelAvance?.isValid === false}
+  //       >
+  //         <FormLabel>Nivel de Avance</FormLabel>
+  //         <HStack spacing={4} align="center">
+  //           <NumberInput
+  //             value={formData.nivelAvance}
+  //             onChange={(value) =>
+  //               handleInputChange("nivelAvance", Number(value))
+  //             }
+  //             min={0}
+  //             max={100}
+  //             w="100px"
+  //           >
+  //             <NumberInputField />
+  //           </NumberInput>
+  //           <Progress
+  //             value={formData.nivelAvance}
+  //             w="full"
+  //             colorScheme="green"
+  //             hasStripe
+  //           />
+  //           <Text>{formData.nivelAvance}%</Text>
+  //         </HStack>
+  //       </FormControl>
 
-        <FormControl
-          isInvalid={validationStatus.personasAlcanzadas?.isValid === false}
-        >
-          <FormLabel>Personas Alcanzadas</FormLabel>
-          <NumberInput
-            value={formData.personasAlcanzadas}
-            onChange={(value) =>
-              handleInputChange("personasAlcanzadas", Number(value))
-            }
-            min={0}
-          >
-            <NumberInputField />
-          </NumberInput>
-        </FormControl>
+  //       <FormControl
+  //         isInvalid={validationStatus.personasAlcanzadas?.isValid === false}
+  //       >
+  //         <FormLabel>Personas Alcanzadas</FormLabel>
+  //         <NumberInput
+  //           value={formData.personasAlcanzadas}
+  //           onChange={(value) =>
+  //             handleInputChange("personasAlcanzadas", Number(value))
+  //           }
+  //           min={0}
+  //         >
+  //           <NumberInputField />
+  //         </NumberInput>
+  //       </FormControl>
 
-        <FormControl
-          isInvalid={validationStatus.beneficiarios?.isValid === false}
-        >
-          <FormLabel>Seleccionar Beneficiarios</FormLabel>
-          <QuickCreateSelect
-            options={datos.beneficiarios}
-            value={formData.beneficiarios}
-            onChange={(value) => handleInputChange("beneficiarios", value)}
-            placeholder="Seleccione beneficiarios"
-            type="beneficiario"
-            isMulti
-            error={validationStatus.beneficiarios?.message}
-          />
-        </FormControl>
+  //       <FormControl
+  //         isInvalid={validationStatus.beneficiarios?.isValid === false}
+  //       >
+  //         <FormLabel>Seleccionar Beneficiarios</FormLabel>
+  //         <QuickCreateSelect
+  //           options={datos.beneficiarios}
+  //           value={formData.beneficiarios}
+  //           onChange={(value) => handleInputChange("beneficiarios", value)}
+  //           placeholder="Seleccione beneficiarios"
+  //           type="beneficiario"
+  //           isMulti
+  //           error={validationStatus.beneficiarios?.message}
+  //         />
+  //       </FormControl>
 
-        <FormControl>
-          <FormLabel>Observaciones</FormLabel>
-          <Input
-            as="textarea"
-            value={formData.observaciones}
-            onChange={(e) => handleInputChange("observaciones", e.target.value)}
-            placeholder="Ingrese observaciones relevantes"
-            h="100px"
-            resize="vertical"
-          />
-        </FormControl>
-      </Stack>
-    </MotionBox>
-  );
+  //       <FormControl>
+  //         <FormLabel>Observaciones</FormLabel>
+  //         <Input
+  //           as="textarea"
+  //           value={formData.observaciones}
+  //           onChange={(e) => handleInputChange("observaciones", e.target.value)}
+  //           placeholder="Ingrese observaciones relevantes"
+  //           h="100px"
+  //           resize="vertical"
+  //         />
+  //       </FormControl>
+  //     </Stack>
+  //   </MotionBox>
+  // );
 
   const renderEvidencias = () => (
     <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -1022,15 +1093,18 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
         break;
 
       case 3:
-        if (!formData.donantes.some((d) => d.donante && d.porcentaje > 0)) {
+        if (!formData.donantes.some((d) => d.donante && d.montoAportado > 0)) {
           stepErrors.donantes = "Debe configurar al menos un donante";
+          break;
         }
-        const sumaPorcentajes = formData.donantes.reduce(
-          (sum, d) => sum + Number(d.porcentaje),
+
+        const totalAportes = formData.donantes.reduce(
+          (sum, d) => sum + Number(d.montoAportado || 0),
           0
         );
-        if (sumaPorcentajes !== 100) {
-          stepErrors.donantes = `La suma de porcentajes debe ser 100%. Actual: ${sumaPorcentajes}%`;
+
+        if (totalAportes !== Number(formData.presupuesto)) {
+          stepErrors.donantes = `La suma de los aportes (Q${totalAportes.toLocaleString()}) debe ser igual al presupuesto total (Q${formData.presupuesto.toLocaleString()})`;
         }
         break;
 
@@ -1082,6 +1156,32 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
 
       const formDataToSend = new FormData();
 
+      // Preparar actividades con toda su información
+      const actividadesCompletas = formData.actividades.map((actividad) => ({
+        nombre: actividad.nombre,
+        descripcion: actividad.descripcion || "",
+        presupuestoAsignado: Number(actividad.presupuestoAsignado) || 0,
+        porcentajePresupuesto:
+          (Number(actividad.presupuestoAsignado) /
+            Number(formData.presupuesto)) *
+          100,
+        avance: Number(actividad.avance) || 0,
+        fechaInicio: actividad.fechaInicio,
+        fechaFin: actividad.fechaFin,
+        estado: actividad.estado || "Pendiente",
+        observaciones: actividad.observaciones || "",
+        beneficiariosAsociados: (actividad.beneficiariosAsociados || []).map(
+          (b) => ({
+            beneficiario:
+              typeof b.beneficiario === "string"
+                ? b.beneficiario
+                : b.beneficiario.toString(),
+            estado: "Activo",
+            fechaAsignacion: new Date().toISOString(),
+          })
+        ),
+      }));
+
       // 1. Campos básicos como strings
       formDataToSend.append("nombre", formData.nombre);
       formDataToSend.append("encargado", formData.encargado);
@@ -1099,6 +1199,12 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
       );
       formDataToSend.append("observaciones", formData.observaciones || "");
 
+      // Añadir actividades
+      formDataToSend.append(
+        "actividades",
+        JSON.stringify(actividadesCompletas)
+      );
+
       // 2. Arrays simples (IDs)
       formDataToSend.append(
         "objetivosGlobales",
@@ -1111,24 +1217,61 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
 
       // 3. Donantes (Array de objetos)
       const donantesValidos = formData.donantes
-        .filter((d) => d.donante && d.porcentaje > 0)
+        .filter((d) => d.donante && d.montoAportado > 0)
         .map((d) => ({
           donante: d.donante.toString(),
-          porcentaje: Number(d.porcentaje),
+          montoAportado: Number(d.montoAportado),
+          porcentaje:
+            (Number(d.montoAportado) / Number(formData.presupuesto)) * 100,
         }));
+
       formDataToSend.append("donantes", JSON.stringify(donantesValidos));
 
       // 4. Beneficiarios (Array de objetos)
-      const beneficiariosFormateados = {
-        beneficiarios: formData.beneficiarios.map((id) => ({
-          beneficiario: id.toString(),
-          estado: "Activo",
-          fechaIngreso: new Date().toISOString(),
-        })),
+      // Obtener beneficiarios únicos de todas las actividades
+      // const beneficiariosFormateados = formData.actividades
+      //   .flatMap(actividad =>
+      //     actividad.beneficiariosAsociados?.map(b => ({
+      //       beneficiario: typeof b.beneficiario === 'string' ? b.beneficiario : b.beneficiario.toString(),
+      //       estado: 'Activo',
+      //       fechaIngreso: new Date().toISOString()
+      //     })) || []
+      //   )
+      //   .filter((b, index, self) =>
+      //     index === self.findIndex(t => t.beneficiario === b.beneficiario)
+      //   );
+
+      const procesarBeneficiariosParaEnvio = () => {
+        // Obtener todos los beneficiarios de todas las actividades
+        const beneficiarios = formData.actividades.flatMap((actividad) =>
+          (actividad.beneficiariosAsociados || []).map((b) => ({
+            beneficiario:
+              typeof b === "string"
+                ? b
+                : typeof b.beneficiario === "string"
+                ? b.beneficiario
+                : b.beneficiario.toString(),
+            estado: "Activo",
+            fechaIngreso: new Date().toISOString(),
+          }))
+        );
+
+        // Eliminar duplicados basados en el ID del beneficiario
+        return Object.values(
+          beneficiarios.reduce((acc, curr) => {
+            if (!acc[curr.beneficiario]) {
+              acc[curr.beneficiario] = curr;
+            }
+            return acc;
+          }, {})
+        );
       };
+
+      const beneficiariosFormateados = procesarBeneficiariosParaEnvio();
+
       formDataToSend.append(
         "beneficiarios",
-        JSON.stringify(beneficiariosFormateados.beneficiarios)
+        JSON.stringify(beneficiariosFormateados)
       );
 
       // 5. Lugares
@@ -1229,7 +1372,9 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
       case 4:
         return renderUbicaciones();
       case 5:
-        return renderBeneficiariosAvance();
+        return renderActividades();
+      // case 6:
+      //   return renderBeneficiariosAvance();
       case 6:
         return renderEvidencias();
       case 7:
@@ -1243,17 +1388,16 @@ const ProyectoForm = ({ onCancel, onSuccess }) => {
   return (
     <Box maxW="6xl" mx="auto" p={6}>
       <Card>
-      <IconButton
-            icon={<X size={20} />} // Cambiamos el ícono a X
-            aria-label="Cerrar"
-            variant="ghost"
-            onClick={onCancel}
-            position="absolute" // Lo posicionamos de forma absoluta
-            right={1} // A 4 unidades del borde derecho
-            top={1} // A 4 unidades del borde superior
-          />
+        <IconButton
+          icon={<X size={20} />} // Cambiamos el ícono a X
+          aria-label="Cerrar"
+          variant="ghost"
+          onClick={onCancel}
+          position="absolute" // Lo posicionamos de forma absoluta
+          right={1} // A 4 unidades del borde derecho
+          top={1} // A 4 unidades del borde superior
+        />
         <CardBody>
-
           {renderStepIndicator()}
 
           <Box mb={8}>{renderCurrentStep()}</Box>

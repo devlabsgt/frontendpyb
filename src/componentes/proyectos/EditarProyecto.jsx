@@ -23,12 +23,10 @@ import {
   CardBody,
   Progress,
   VStack,
-  HStack,
   Image,
   AspectRatio,
   Divider,
   FormErrorMessage,
-  Textarea,
   Heading,
 } from "@chakra-ui/react";
 import {
@@ -40,15 +38,17 @@ import {
   Trash2,
   Upload,
   Files,
-  X
+  X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import QuickCreateSelect from "./QuickCreateSelect";
 import PropTypes from "prop-types";
+import ActividadesForm from "./ActividadesForm";
+import UbicacionForm from "./UbicacionForm";
 
 const MotionBox = motion(Box);
 
-// Definición de PropTypes fuera del componente
+// Definición de PropTypes
 EditarProyecto.propTypes = {
   proyectoId: PropTypes.string.isRequired,
   onCancel: PropTypes.func.isRequired,
@@ -56,21 +56,25 @@ EditarProyecto.propTypes = {
 };
 
 function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
-  // 1. Estados
+  // Estados
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     nombre: "",
     encargado: "",
-    presupuesto: "",
+    presupuesto: {
+      total: 0,
+      ejecutado: 0,
+    },
     fechaInicio: "",
     fechaFinal: "",
     objetivosGlobales: [],
     lineasEstrategicas: [],
-    donantes: [{ donante: "", porcentaje: 0 }],
+    donantes: [{ donante: "", montoAportado: 0, porcentaje: 0 }],
     lugaresAPriorizar: [
       { departamento: "", municipio: "", localidad: "", prioridad: 1 },
     ],
+    actividades: [],
     implicacionMunicipalidades: "Media",
     seguimiento: { frecuencia: "mensual", requiereVisita: false },
     nivelAvance: 0,
@@ -99,21 +103,14 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     "Objetivos y Estrategias",
     "Donantes",
     "Ubicaciones",
-    "Beneficiarios y Avance",
+    "Actividades",
     "Evidencias",
     "Configuración Final",
   ];
-
-  // 2. Efecto para cargar datos iniciales
+  // Efecto para cargar datos iniciales
   useEffect(() => {
     if (!proyectoId) {
-      toast({
-        title: "Error",
-        description: "ID de proyecto no proporcionado",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      console.error("No se proporcionó ID de proyecto");
       if (onCancel) onCancel();
       return;
     }
@@ -175,21 +172,39 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
             proyecto.objetivosGlobales?.map((obj) => obj._id) || [],
           lineasEstrategicas:
             proyecto.lineasEstrategicas?.map((linea) => linea._id) || [],
+          // Manejar el presupuesto correctamente
+          presupuesto: {
+            total: Number(proyecto.presupuesto?.total || 0),
+            ejecutado: Number(proyecto.presupuesto?.ejecutado || 0),
+          },
+          // Formatear los donantes
           donantes: proyecto.donantes?.map((d) => ({
             donante: d.donante._id,
+            montoAportado:
+              (d.porcentaje / 100) * (proyecto.presupuesto?.total || 0),
             porcentaje: d.porcentaje,
-          })) || [{ donante: "", porcentaje: 0 }],
+          })) || [{ donante: "", montoAportado: 0, porcentaje: 0 }],
+          // Formatear las actividades
+          actividades:
+            proyecto.actividades?.map((actividad) => ({
+              ...actividad,
+              fechaInicio: actividad.fechaInicio?.split("T")[0] || "",
+              fechaFin: actividad.fechaFin?.split("T")[0] || "",
+              beneficiariosAsociados: actividad.beneficiariosAsociados?.map(
+                (b) => ({
+                  ...b,
+                  beneficiario:
+                    typeof b.beneficiario === "string"
+                      ? b.beneficiario
+                      : b.beneficiario._id,
+                })
+              ),
+            })) || [],
           beneficiarios:
             proyecto.beneficiarios?.map((b) => {
-              // Si el beneficiario viene como referencia completa
               if (typeof b === "object" && b.beneficiario) {
                 return b.beneficiario._id;
               }
-              // Si el beneficiario viene como ID directo
-              if (typeof b === "object" && b._id) {
-                return b._id;
-              }
-              // Si es solo el ID como string
               return b;
             }) || [],
           fechaInicio: proyecto.fechaInicio?.split("T")[0] || "",
@@ -227,7 +242,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
 
     cargarDatos();
   }, [proyectoId, toast, onCancel]);
-  // 3. Manejadores de eventos
+  // Manejadores de eventos base
   const handleInputChange = (name, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -239,23 +254,54 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
   // Manejador de donantes
   const handleDonanteChange = (index, field, value) => {
     const newDonantes = [...formData.donantes];
-    newDonantes[index] = {
-      ...newDonantes[index],
-      [field]: value,
-    };
+
+    if (field === "montoAportado") {
+      const nuevoMonto = Number(value);
+      const otrosAportes = newDonantes.reduce(
+        (sum, d, i) => (i !== index ? sum + Number(d.montoAportado || 0) : sum),
+        0
+      );
+
+      if (otrosAportes + nuevoMonto > formData.presupuesto.total) {
+        toast({
+          title: "Error",
+          description:
+            "El total de aportes no puede exceder el presupuesto total",
+          status: "error",
+          duration: 3000,
+        });
+        return;
+      }
+
+      newDonantes[index] = {
+        ...newDonantes[index],
+        montoAportado: nuevoMonto,
+        porcentaje: (nuevoMonto / formData.presupuesto.total) * 100,
+      };
+    } else {
+      newDonantes[index] = {
+        ...newDonantes[index],
+        [field]: value,
+      };
+    }
+
     handleInputChange("donantes", newDonantes);
 
-    // Validar suma de porcentajes
-    const sumaPorcentajes = newDonantes.reduce(
-      (sum, d) => sum + Number(d.porcentaje || 0),
+    // Validar el total de aportes
+    const totalAportes = newDonantes.reduce(
+      (sum, d) => sum + Number(d.montoAportado || 0),
       0
     );
-    if (sumaPorcentajes !== 100) {
+
+    const porcentajeTotal = (totalAportes / formData.presupuesto.total) * 100;
+
+    if (totalAportes !== formData.presupuesto.total) {
       setValidationStatus((prev) => ({
         ...prev,
         donantes: {
           isValid: false,
-          message: `La suma de porcentajes debe ser 100%. Actual: ${sumaPorcentajes}%`,
+          message: `El total de aportes debe ser igual al presupuesto total. 
+                 Actual: ${porcentajeTotal.toFixed(2)}%`,
         },
       }));
     } else {
@@ -266,17 +312,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     }
   };
 
-  // Manejador de lugares
-  const handleLugarChange = (index, field, value) => {
-    const newLugares = [...formData.lugaresAPriorizar];
-    newLugares[index] = {
-      ...newLugares[index],
-      [field]: field === "prioridad" ? Number(value) || 1 : value,
-    };
-    handleInputChange("lugaresAPriorizar", newLugares);
-  };
-
-  // 4. Manejadores de archivos
+  // Manejadores de archivos
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     const maxSize = 5 * 1024 * 1024;
@@ -390,6 +426,55 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     // Limpiar input
     e.target.value = "";
   };
+  // Manejadores específicos para donantes y lugares
+  const handleLugarChange = (index, nuevoLugar) => {
+    const newLugares = [...formData.lugaresAPriorizar];
+    newLugares[index] = nuevoLugar;
+    setFormData((prev) => ({
+      ...prev,
+      lugaresAPriorizar: newLugares,
+    }));
+  };
+
+  const agregarDonante = () => {
+    setFormData((prev) => ({
+      ...prev,
+      donantes: [
+        ...prev.donantes,
+        { donante: "", montoAportado: 0, porcentaje: 0 },
+      ],
+    }));
+  };
+
+  const removerDonante = (index) => {
+    const newDonantes = formData.donantes.filter((_, i) => i !== index);
+    handleInputChange("donantes", newDonantes);
+  };
+
+  const agregarLugar = () => {
+    const ultimaPrioridad =
+      formData.lugaresAPriorizar.length > 0
+        ? Math.max(...formData.lugaresAPriorizar.map((l) => l.prioridad || 1))
+        : 0;
+
+    setFormData((prev) => ({
+      ...prev,
+      lugaresAPriorizar: [
+        ...prev.lugaresAPriorizar,
+        {
+          departamento: "",
+          municipio: "",
+          localidad: "",
+          prioridad: Math.min(ultimaPrioridad + 1, 5),
+        },
+      ],
+    }));
+  };
+
+  const removerLugar = (index) => {
+    const newLugares = formData.lugaresAPriorizar.filter((_, i) => i !== index);
+    handleInputChange("lugaresAPriorizar", newLugares);
+  };
 
   const handleRemoveFile = async (index, evidenciaId) => {
     try {
@@ -429,44 +514,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     }
   };
 
-  // 5. Funciones auxiliares para donantes y lugares
-  const agregarDonante = () => {
-    setFormData((prev) => ({
-      ...prev,
-      donantes: [...prev.donantes, { donante: "", porcentaje: 0 }],
-    }));
-  };
-
-  const removerDonante = (index) => {
-    const newDonantes = formData.donantes.filter((_, i) => i !== index);
-    handleInputChange("donantes", newDonantes);
-  };
-
-  const agregarLugar = () => {
-    const ultimaPrioridad =
-      formData.lugaresAPriorizar.length > 0
-        ? Math.max(...formData.lugaresAPriorizar.map((l) => l.prioridad || 1))
-        : 0;
-
-    setFormData((prev) => ({
-      ...prev,
-      lugaresAPriorizar: [
-        ...prev.lugaresAPriorizar,
-        {
-          departamento: "",
-          municipio: "",
-          localidad: "",
-          prioridad: Math.min(ultimaPrioridad + 1, 5),
-        },
-      ],
-    }));
-  };
-
-  const removerLugar = (index) => {
-    const newLugares = formData.lugaresAPriorizar.filter((_, i) => i !== index);
-    handleInputChange("lugaresAPriorizar", newLugares);
-  };
-
+  // Funciones de renderizado
   const renderInformacionBasica = () => (
     <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={4}>
       <GridItem colSpan={{ base: 1, md: 2 }}>
@@ -513,13 +561,31 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
           isRequired
           isInvalid={validationStatus.presupuesto?.isValid === false}
         >
-          <FormLabel>Presupuesto</FormLabel>
+          <FormLabel>Presupuesto Total</FormLabel>
           <NumberInput
-            value={formData.presupuesto}
-            onChange={(value) => handleInputChange("presupuesto", value)}
+            value={formData.presupuesto.total}
+            onChange={(value) =>
+              handleInputChange("presupuesto", {
+                ...formData.presupuesto,
+                total: Number(value),
+              })
+            }
             min={0}
           >
             <NumberInputField placeholder="0.00" />
+          </NumberInput>
+        </FormControl>
+      </GridItem>
+
+      <GridItem>
+        <FormControl>
+          <FormLabel>Presupuesto Ejecutado</FormLabel>
+          <NumberInput
+            value={formData.presupuesto.ejecutado}
+            isReadOnly
+            isDisabled
+          >
+            <NumberInputField />
           </NumberInput>
         </FormControl>
       </GridItem>
@@ -553,7 +619,6 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
       </GridItem>
     </Grid>
   );
-
   const renderObjetivosEstrategias = () => (
     <Stack spacing={6}>
       <FormControl
@@ -590,215 +655,161 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     </Stack>
   );
 
-  const renderDonantes = () => (
-    <Stack spacing={4}>
-      {formData.donantes.map((donante, index) => (
-        <Flex key={index} gap={4} align="flex-end">
-          <Box flex={1}>
-            <QuickCreateSelect
-              options={datos.donantes}
-              value={donante.donante}
-              onChange={(value) => handleDonanteChange(index, "donante", value)}
-              placeholder="Seleccione un donante"
-              type="donante"
-              error={validationStatus[`donante_${index}`]?.message}
-            />
-          </Box>
-          <FormControl w="32">
-            <FormLabel>Porcentaje</FormLabel>
-            <NumberInput
-              value={donante.porcentaje}
-              onChange={(value) =>
-                handleDonanteChange(index, "porcentaje", Number(value))
-              }
-              min={0}
-              max={100}
-            >
-              <NumberInputField />
-            </NumberInput>
-          </FormControl>
-          {index > 0 && (
-            <IconButton
-              icon={<Trash2 />}
-              onClick={() => removerDonante(index)}
-              colorScheme="red"
-              variant="ghost"
-              size="sm"
-              aria-label="Eliminar donante"
-            />
-          )}
-        </Flex>
-      ))}
+  const renderDonantes = () => {
+    // Calcular totales
+    const totalAportes = formData.donantes.reduce(
+      (sum, d) => sum + Number(d.montoAportado || 0),
+      0
+    );
 
-      <Button
-        leftIcon={<Plus />}
-        onClick={agregarDonante}
-        variant="ghost"
-        colorScheme="blue"
-        size="sm"
-        w="fit-content"
-      >
-        Agregar Donante
-      </Button>
-    </Stack>
-  );
-
-  const renderUbicaciones = () => (
-    <Stack spacing={6}>
-      {formData.lugaresAPriorizar.map((lugar, index) => (
-        <Grid
-          key={index}
-          templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }}
-          gap={4}
-        >
-          <GridItem>
-            <FormControl>
-              <FormLabel>Departamento</FormLabel>
-              <Input
-                value={lugar.departamento}
-                onChange={(e) =>
-                  handleLugarChange(index, "departamento", e.target.value)
-                }
-                placeholder="Departamento"
-              />
-            </FormControl>
-          </GridItem>
-
-          <GridItem>
-            <FormControl>
-              <FormLabel>Municipio</FormLabel>
-              <Input
-                value={lugar.municipio}
-                onChange={(e) =>
-                  handleLugarChange(index, "municipio", e.target.value)
-                }
-                placeholder="Municipio"
-              />
-            </FormControl>
-          </GridItem>
-
-          <GridItem>
-            <FormControl>
-              <FormLabel>Localidad</FormLabel>
-              <Input
-                value={lugar.localidad}
-                onChange={(e) =>
-                  handleLugarChange(index, "localidad", e.target.value)
-                }
-                placeholder="Localidad"
-              />
-            </FormControl>
-          </GridItem>
-
-          <GridItem>
-            <Flex gap={2} alignItems="flex-end" h="full">
-              <FormControl flex={1}>
-                <FormLabel>Prioridad</FormLabel>
-                <NumberInput
-                  value={lugar.prioridad}
-                  onChange={(valueString, valueNumber) =>
-                    handleLugarChange(index, "prioridad", valueNumber)
+    return (
+      <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+        <Stack spacing={4}>
+          <Text fontWeight="bold">
+            Presupuesto Total: Q{formData.presupuesto.total.toLocaleString()}
+          </Text>
+          {formData.donantes.map((donante, index) => (
+            <Flex key={index} gap={4} align="flex-end">
+              <Box flex={1}>
+                <QuickCreateSelect
+                  options={datos.donantes}
+                  value={donante.donante}
+                  onChange={(value) =>
+                    handleDonanteChange(index, "donante", value)
                   }
-                  min={1}
-                  max={5}
-                  defaultValue={1}
+                  placeholder="Seleccione un donante"
+                  type="donante"
+                  error={validationStatus[`donante_${index}`]?.message}
+                />
+              </Box>
+              <FormControl w="32">
+                <FormLabel>Monto</FormLabel>
+                <NumberInput
+                  value={donante.montoAportado}
+                  onChange={(value) =>
+                    handleDonanteChange(index, "montoAportado", Number(value))
+                  }
+                  min={0}
+                  max={
+                    formData.presupuesto.total -
+                    formData.donantes.reduce(
+                      (sum, d, i) =>
+                        i !== index ? sum + Number(d.montoAportado || 0) : sum,
+                      0
+                    )
+                  }
                 >
                   <NumberInputField />
                 </NumberInput>
               </FormControl>
+              <Text w="32" textAlign="right">
+                {(
+                  (donante.montoAportado / formData.presupuesto.total) *
+                  100
+                ).toFixed(2)}
+                %
+              </Text>
               {index > 0 && (
                 <IconButton
                   icon={<Trash2 />}
-                  onClick={() => removerLugar(index)}
+                  onClick={() => removerDonante(index)}
                   colorScheme="red"
                   variant="ghost"
                   size="sm"
-                  aria-label="Eliminar ubicación"
+                  aria-label="Eliminar donante"
                 />
               )}
             </Flex>
-          </GridItem>
-        </Grid>
-      ))}
+          ))}
 
-      <Button
-        leftIcon={<Plus />}
-        onClick={agregarLugar}
-        variant="ghost"
-        colorScheme="blue"
-        size="sm"
-        w="fit-content"
-      >
-        Agregar Ubicación
-      </Button>
-    </Stack>
+          <Button
+            leftIcon={<Plus />}
+            onClick={agregarDonante}
+            variant="ghost"
+            colorScheme="blue"
+            size="sm"
+            w="fit-content"
+          >
+            Agregar Donante
+          </Button>
+
+          <Alert
+            status={
+              totalAportes === formData.presupuesto.total
+                ? "success"
+                : "warning"
+            }
+          >
+            <AlertIcon />
+            <Box>
+              <Text>
+                Total Asignado: Q{totalAportes.toLocaleString()} (
+                {((totalAportes / formData.presupuesto.total) * 100).toFixed(2)}
+                %)
+              </Text>
+              <Text>
+                Restante por Asignar: Q
+                {(formData.presupuesto.total - totalAportes).toLocaleString()}
+              </Text>
+            </Box>
+          </Alert>
+        </Stack>
+      </MotionBox>
+    );
+  };
+
+  const renderUbicaciones = () => (
+    <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      <Stack spacing={6}>
+        {formData.lugaresAPriorizar.map((lugar, index) => (
+          <UbicacionForm
+            key={index}
+            lugar={lugar}
+            index={index}
+            onUpdate={handleLugarChange}
+            onRemove={removerLugar}
+            error={errores[`lugar_${index}`]}
+          />
+        ))}
+
+        <Button
+          leftIcon={<Plus />}
+          onClick={agregarLugar}
+          variant="ghost"
+          colorScheme="blue"
+          size="sm"
+          w="fit-content"
+        >
+          Agregar Ubicación
+        </Button>
+      </Stack>
+    </MotionBox>
   );
 
-  const renderBeneficiariosAvance = () => (
-    <Stack spacing={6}>
-      <FormControl isInvalid={validationStatus.nivelAvance?.isValid === false}>
-        <FormLabel>Nivel de Avance</FormLabel>
-        <HStack spacing={4} align="center">
-          <NumberInput
-            value={formData.nivelAvance}
-            onChange={(value) =>
-              handleInputChange("nivelAvance", Number(value))
-            }
-            min={0}
-            max={100}
-            w="100px"
-          >
-            <NumberInputField />
-          </NumberInput>
-          <Progress
-            value={formData.nivelAvance}
-            w="full"
-            colorScheme="green"
-            hasStripe
-          />
-          <Text>{formData.nivelAvance}%</Text>
-        </HStack>
-      </FormControl>
-
-      <FormControl>
-        <FormLabel>Personas Alcanzadas</FormLabel>
-        <NumberInput
-          value={formData.personasAlcanzadas}
-          onChange={(value) =>
-            handleInputChange("personasAlcanzadas", Number(value))
-          }
-          min={0}
-        >
-          <NumberInputField />
-        </NumberInput>
-      </FormControl>
-
-      <FormControl>
-        <FormLabel>Beneficiarios</FormLabel>
-        <QuickCreateSelect
-          options={datos.beneficiarios.map((b) => ({
-            _id: b._id,
-            nombre: b.nombre,
-            // Agrega cualquier otro campo que necesites mostrar
-          }))}
-          value={formData.beneficiarios}
-          onChange={(value) => handleInputChange("beneficiarios", value)}
-          placeholder="Seleccione beneficiarios"
-          type="beneficiario"
-          isMulti={true}
-          error={validationStatus.beneficiarios?.message}
-        />
-      </FormControl>
-
-      <FormControl>
-        <FormLabel>Observaciones</FormLabel>
-        <Textarea
-          value={formData.observaciones}
-          onChange={(e) => handleInputChange("observaciones", e.target.value)}
-          placeholder="Ingrese observaciones"
-        />
-      </FormControl>
-    </Stack>
+  const renderActividades = () => (
+    <MotionBox initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+      <ActividadesForm
+        presupuestoTotal={Number(formData.presupuesto.total)}
+        actividades={formData.actividades}
+        onActividadesChange={(actividades) => {
+          setFormData((prev) => ({
+            ...prev,
+            actividades,
+          }));
+        }}
+        beneficiariosDisponibles={datos.beneficiarios}
+        fechasProyecto={{
+          fechaInicio: formData.fechaInicio || "",
+          fechaFinal: formData.fechaFinal || "",
+        }}
+        onAvanceChange={(nuevoAvance) => {
+          setFormData((prev) => ({
+            ...prev,
+            nivelAvance: nuevoAvance,
+          }));
+        }}
+      />
+    </MotionBox>
   );
 
   const renderEvidencias = () => (
@@ -819,9 +830,13 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
             htmlFor="file-upload"
             leftIcon={<Upload />}
             colorScheme="blue"
+            cursor="pointer"
           >
             Subir Archivos
           </Button>
+          <Text fontSize="sm" color="gray.500">
+            Formatos permitidos: Imágenes y PDF (Máx. 5MB por archivo)
+          </Text>
 
           <Grid templateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
             {previewImages.map((preview, index) => (
@@ -896,7 +911,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
           <FormControl>
             <FormLabel>Frecuencia de Seguimiento</FormLabel>
             <Select
-              value={formData.seguimiento?.frecuencia}
+              value={formData.seguimiento.frecuencia}
               onChange={(e) =>
                 handleInputChange("seguimiento", {
                   ...formData.seguimiento,
@@ -914,7 +929,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
 
       <FormControl>
         <Checkbox
-          isChecked={formData.seguimiento?.requiereVisita}
+          isChecked={formData.seguimiento.requiereVisita}
           onChange={(e) =>
             handleInputChange("seguimiento", {
               ...formData.seguimiento,
@@ -942,35 +957,35 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
                 <strong>Nombre:</strong> {formData.nombre}
               </Text>
               <Text>
-                <strong>Presupuesto:</strong> Q
-                {Number(formData.presupuesto).toLocaleString()}
+                <strong>Presupuesto Total:</strong> Q
+                {formData.presupuesto.total.toLocaleString()}
+              </Text>
+              <Text>
+                <strong>Presupuesto Ejecutado:</strong> Q
+                {formData.presupuesto.ejecutado.toLocaleString()}
               </Text>
               <Text>
                 <strong>Nivel de Avance:</strong> {formData.nivelAvance}%
               </Text>
               <Text>
-                <strong>Personas Alcanzadas:</strong>{" "}
-                {formData.personasAlcanzadas}
-              </Text>
-              <Text>
                 <strong>Donantes:</strong>{" "}
                 {
-                  formData.donantes.filter((d) => d.donante && d.porcentaje > 0)
-                    .length
+                  formData.donantes.filter(
+                    (d) => d.donante && d.montoAportado > 0
+                  ).length
                 }
               </Text>
               <Text>
-                <strong>Beneficiarios:</strong> {formData.beneficiarios.length}
+                <strong>Actividades:</strong> {formData.actividades.length}
               </Text>
               <Text>
-                <strong>Evidencias:</strong> {formData.evidencias.length}{" "}
-                archivos
+                <strong>Evidencias:</strong> {previewImages.length} archivos
               </Text>
               <Text>
                 <strong>Ubicaciones:</strong>{" "}
                 {
                   formData.lugaresAPriorizar.filter(
-                    (l) => l.departamento || l.municipio || l.localidad
+                    (l) => l.departamento && l.municipio && l.localidad
                   ).length
                 }
               </Text>
@@ -998,8 +1013,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
       </Card>
     </Stack>
   );
-
-  // 6. Validación de campos
+  // Lógica de validación
   const validateField = (name, value) => {
     let error = null;
 
@@ -1013,8 +1027,8 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
         if (!value) error = "Debe seleccionar un encargado";
         break;
       case "presupuesto":
-        if (!value) error = "El presupuesto es requerido";
-        else if (isNaN(value) || value <= 0)
+        if (!value.total) error = "El presupuesto es requerido";
+        else if (isNaN(value.total) || value.total <= 0)
           error = "Ingrese un valor válido mayor a 0";
         break;
       case "fechaInicio":
@@ -1041,38 +1055,15 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
       case "donantes":
         if (!value || !Array.isArray(value) || value.length === 0) {
           error = "Debe agregar al menos un donante";
-        } else if (!value.some((d) => d.donante && d.porcentaje > 0)) {
-          error = "Debe configurar al menos un donante";
         } else {
-          const sumaPorcentajes = value.reduce(
-            (sum, d) => sum + Number(d.porcentaje || 0),
+          const totalAportes = value.reduce(
+            (sum, d) => sum + Number(d.montoAportado || 0),
             0
           );
-          if (sumaPorcentajes !== 100) {
-            error = `La suma de porcentajes debe ser 100%. Actual: ${sumaPorcentajes}%`;
+          if (totalAportes !== formData.presupuesto.total) {
+            error = `El total de aportes debe ser igual al presupuesto total`;
           }
         }
-        break;
-      case "lugaresAPriorizar":
-        if (!value || !Array.isArray(value) || value.length === 0) {
-          error = "Debe agregar al menos una ubicación";
-        } else {
-          const lugarInvalido = value.some(
-            (lugar) =>
-              !lugar.departamento || !lugar.municipio || !lugar.localidad
-          );
-          if (lugarInvalido) {
-            error = "Todos los campos de ubicación son requeridos";
-          }
-        }
-        break;
-      case "nivelAvance":
-        if (value < 0 || value > 100)
-          error = "El nivel de avance debe estar entre 0 y 100";
-        break;
-      case "personasAlcanzadas":
-        if (value < 0)
-          error = "El número de personas alcanzadas no puede ser negativo";
         break;
       default:
         break;
@@ -1086,7 +1077,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     return error;
   };
 
-  // 7. Validación de pasos
+  // Validación del paso actual
   const validateStep = () => {
     let stepErrors = {};
 
@@ -1096,20 +1087,12 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
           stepErrors.nombre = "El nombre es requerido";
         if (!formData.encargado)
           stepErrors.encargado = "Debe seleccionar un encargado";
-        if (!formData.presupuesto)
+        if (!formData.presupuesto.total)
           stepErrors.presupuesto = "El presupuesto es requerido";
         if (!formData.fechaInicio)
           stepErrors.fechaInicio = "La fecha de inicio es requerida";
         if (!formData.fechaFinal)
           stepErrors.fechaFinal = "La fecha final es requerida";
-        if (
-          formData.fechaFinal &&
-          formData.fechaInicio &&
-          new Date(formData.fechaFinal) <= new Date(formData.fechaInicio)
-        ) {
-          stepErrors.fechaFinal =
-            "La fecha final debe ser posterior a la fecha de inicio";
-        }
         break;
 
       case 2: // Objetivos y Estrategias
@@ -1124,18 +1107,15 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
         break;
 
       case 3: // Donantes
-        const donantesValidos = formData.donantes.filter(
-          (d) => d.donante && d.porcentaje > 0
-        );
-        if (donantesValidos.length === 0) {
+        if (!formData.donantes.some((d) => d.donante && d.montoAportado > 0)) {
           stepErrors.donantes = "Debe configurar al menos un donante";
         } else {
-          const sumaPorcentajes = donantesValidos.reduce(
-            (sum, d) => sum + Number(d.porcentaje),
+          const totalAportes = formData.donantes.reduce(
+            (sum, d) => sum + Number(d.montoAportado || 0),
             0
           );
-          if (sumaPorcentajes !== 100) {
-            stepErrors.donantes = `La suma de porcentajes debe ser 100%. Actual: ${sumaPorcentajes}%`;
+          if (totalAportes !== formData.presupuesto.total) {
+            stepErrors.donantes = `Los aportes deben sumar el presupuesto total (Q${formData.presupuesto.total})`;
           }
         }
         break;
@@ -1153,17 +1133,6 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
         }
         break;
 
-      case 5: // Beneficiarios y Avance
-        if (formData.nivelAvance < 0 || formData.nivelAvance > 100) {
-          stepErrors.nivelAvance =
-            "El nivel de avance debe estar entre 0 y 100";
-        }
-        if (formData.personasAlcanzadas < 0) {
-          stepErrors.personasAlcanzadas =
-            "El número de personas alcanzadas no puede ser negativo";
-        }
-        break;
-
       default:
         break;
     }
@@ -1172,7 +1141,7 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     return Object.keys(stepErrors).length === 0;
   };
 
-  // 8. Navegación entre pasos
+  // Navegación entre pasos
   const handleNext = () => {
     if (validateStep()) {
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
@@ -1183,104 +1152,29 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  // 9. Envío final del formulario
-  const handleSubmit = async () => {
-    if (!validateStep()) return;
-
-    setIsSaving(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No hay token de autenticación");
-
-      // Preparar datos para enviar
-      const dataToUpdate = {
-        ...formData,
-        // Formatear los datos correctamente
-        objetivosGlobales: Array.isArray(formData.objetivosGlobales)
-          ? formData.objetivosGlobales
-          : [],
-        lineasEstrategicas: Array.isArray(formData.lineasEstrategicas)
-          ? formData.lineasEstrategicas
-          : [],
-        donantes: formData.donantes
-          .filter((d) => d.donante && d.porcentaje > 0)
-          .map((d) => ({
-            donante: d.donante,
-            porcentaje: Number(d.porcentaje),
-          })),
-        beneficiarios: formData.beneficiarios.map((id) => ({
-          beneficiario: id,
-          estado: "Activo",
-          fechaIngreso: new Date().toISOString(),
-        })),
-        lugaresAPriorizar: formData.lugaresAPriorizar
-          .filter((l) => l.departamento && l.municipio && l.localidad)
-          .map((l) => ({
-            departamento: l.departamento.trim(),
-            municipio: l.municipio.trim(),
-            localidad: l.localidad.trim(),
-            prioridad: Number(l.prioridad) || 1,
-          })),
-        // Asegurar que los campos numéricos sean números
-        presupuesto: Number(formData.presupuesto),
-        nivelAvance: Number(formData.nivelAvance),
-        personasAlcanzadas: Number(formData.personasAlcanzadas),
-        // Asegurar formato de fechas
-        fechaInicio: formData.fechaInicio,
-        fechaFinal: formData.fechaFinal,
-        // Excluir campos no necesarios
-        numero: undefined,
-        codigo: undefined,
-        _id: undefined,
-        createdAt: undefined,
-        updatedAt: undefined,
-        __v: undefined,
-      };
-
-      console.log("Datos a enviar:", dataToUpdate); // Para debugging
-
-      const response = await fetch(
-        `${process.env.REACT_APP_backend}/proyecto/${proyectoId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(dataToUpdate),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al actualizar el proyecto");
-      }
-
-      const proyectoActualizado = await response.json();
-
-      toast({
-        title: "Éxito",
-        description: "Proyecto actualizado correctamente",
-        status: "success",
-        duration: 5000,
-      });
-
-      if (onSuccess) {
-        onSuccess(proyectoActualizado);
-      }
-    } catch (error) {
-      console.error("Error al actualizar proyecto:", error);
-      toast({
-        title: "Error",
-        description: error.message,
-        status: "error",
-        duration: 5000,
-      });
-    } finally {
-      setIsSaving(false);
+  // Renderizado del paso actual
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return renderInformacionBasica();
+      case 2:
+        return renderObjetivosEstrategias();
+      case 3:
+        return renderDonantes();
+      case 4:
+        return renderUbicaciones();
+      case 5:
+        return renderActividades();
+      case 6:
+        return renderEvidencias();
+      case 7:
+        return renderConfiguracionFinal();
+      default:
+        return null;
     }
   };
-  // 10. Funciones de renderizado
+
+  // Renderizado del indicador de pasos
   const renderStepIndicator = () => (
     <Flex justify="space-between" mb={8}>
       {steps.map((step, index) => (
@@ -1336,75 +1230,126 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
       ))}
     </Flex>
   );
+  // Función de envío del formulario
+  const handleSubmit = async () => {
+    if (!validateStep()) return;
 
-  const renderCurrentStep = () => {
-    const commonMotionProps = {
-      initial: { opacity: 0, x: 20 },
-      animate: { opacity: 1, x: 0 },
-      transition: { duration: 0.3 },
-    };
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No hay token de autenticación");
 
-    switch (currentStep) {
-      case 1:
-        return (
-          <MotionBox {...commonMotionProps}>
-            {renderInformacionBasica()}
-          </MotionBox>
-        );
-      case 2:
-        return (
-          <MotionBox {...commonMotionProps}>
-            {renderObjetivosEstrategias()}
-          </MotionBox>
-        );
-      case 3:
-        return <MotionBox {...commonMotionProps}>{renderDonantes()}</MotionBox>;
-      case 4:
-        return (
-          <MotionBox {...commonMotionProps}>{renderUbicaciones()}</MotionBox>
-        );
-      case 5:
-        return (
-          <MotionBox {...commonMotionProps}>
-            {renderBeneficiariosAvance()}
-          </MotionBox>
-        );
-      case 6:
-        return (
-          <MotionBox {...commonMotionProps}>{renderEvidencias()}</MotionBox>
-        );
-      case 7:
-        return (
-          <MotionBox {...commonMotionProps}>
-            {renderConfiguracionFinal()}
-          </MotionBox>
-        );
-      default:
-        return null;
+      // Preparar actividades con toda su información
+      const actividadesCompletas = formData.actividades.map((actividad) => ({
+        nombre: actividad.nombre,
+        descripcion: actividad.descripcion || "",
+        presupuestoAsignado: Number(actividad.presupuestoAsignado),
+        porcentajePresupuesto:
+          (Number(actividad.presupuestoAsignado) / formData.presupuesto.total) *
+          100,
+        avance: Number(actividad.avance) || 0,
+        fechaInicio: actividad.fechaInicio,
+        fechaFin: actividad.fechaFin,
+        estado: actividad.estado || "Pendiente",
+        observaciones: actividad.observaciones || "",
+        beneficiariosAsociados:
+          actividad.beneficiariosAsociados?.map((b) => ({
+            beneficiario:
+              typeof b.beneficiario === "string"
+                ? b.beneficiario
+                : b.beneficiario._id,
+            estado: "Activo",
+            fechaAsignacion: new Date().toISOString(),
+          })) || [],
+      }));
+
+      // Preparar los datos para enviar
+      const dataToUpdate = {
+        ...formData,
+        presupuesto: {
+          total: Number(formData.presupuesto.total),
+          ejecutado: Number(formData.presupuesto.ejecutado),
+        },
+        objetivosGlobales: formData.objetivosGlobales,
+        lineasEstrategicas: formData.lineasEstrategicas,
+        actividades: actividadesCompletas,
+        donantes: formData.donantes
+          .filter((d) => d.donante && d.montoAportado > 0)
+          .map((d) => ({
+            donante: d.donante,
+            montoAportado: Number(d.montoAportado),
+            porcentaje:
+              (Number(d.montoAportado) / formData.presupuesto.total) * 100,
+          })),
+        lugaresAPriorizar: formData.lugaresAPriorizar
+          .filter((l) => l.departamento && l.municipio && l.localidad)
+          .map((l) => ({
+            departamento: l.departamento.trim(),
+            municipio: l.municipio.trim(),
+            localidad: l.localidad.trim(),
+            prioridad: Number(l.prioridad) || 1,
+          })),
+        nivelAvance: Number(formData.nivelAvance),
+        personasAlcanzadas: Number(formData.personasAlcanzadas),
+        seguimiento: {
+          ...formData.seguimiento,
+          proximoSeguimiento: new Date(formData.fechaInicio).toISOString(),
+        },
+      };
+
+      // Eliminar campos que no deben actualizarse
+      delete dataToUpdate._id;
+      delete dataToUpdate.createdAt;
+      delete dataToUpdate.updatedAt;
+      delete dataToUpdate.__v;
+      delete dataToUpdate.numero;
+      delete dataToUpdate.codigo;
+
+      const response = await fetch(
+        `${process.env.REACT_APP_backend}/proyecto/${proyectoId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(dataToUpdate),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al actualizar el proyecto");
+      }
+
+      const proyectoActualizado = await response.json();
+
+      toast({
+        title: "Éxito",
+        description: "Proyecto actualizado correctamente",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+
+      if (onSuccess) {
+        onSuccess(proyectoActualizado);
+      }
+    } catch (error) {
+      console.error("Error al actualizar proyecto:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const renderErrores = () => {
-    if (Object.keys(errores).length === 0) return null;
-
-    return (
-      <Alert status="error" mt={4}>
-        <AlertIcon />
-        <Box>
-          <AlertTitle>Por favor corrija los siguientes errores:</AlertTitle>
-          <VStack align="start" mt={2}>
-            {Object.values(errores).map((error, index) => (
-              <Text key={index} fontSize="sm">
-                {error}
-              </Text>
-            ))}
-          </VStack>
-        </Box>
-      </Alert>
-    );
-  };
-
-  // 11. Renderizado del componente
+  // Renderizado principal del componente
   if (isLoading) {
     return (
       <Box p={5}>
@@ -1438,9 +1383,6 @@ function EditarProyecto({ proyectoId, onCancel, onSuccess }) {
           <Box mb={8} position="relative">
             {renderCurrentStep()}
           </Box>
-
-          {/* Mensajes de error */}
-          {renderErrores()}
 
           {/* Botones de navegación */}
           <Flex justify="space-between" mt={8}>
