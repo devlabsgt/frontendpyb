@@ -235,7 +235,8 @@ const VerProyecto = ({ proyecto }) => {
           body: proyecto.donantes.map(d => [
             d.donante?.nombre || 'N/A',
             formatPresupuesto(d.montoAportado),
-            `${d.porcentaje}%`,
+            // Aquí formateamos el porcentaje a 2 decimales
+            `${Number(d.porcentaje).toFixed(2)}%`,
             formatFecha(d.fechaCompromiso)
           ]),
           theme: 'striped',
@@ -252,7 +253,7 @@ const VerProyecto = ({ proyecto }) => {
           margin: { left: margin, right: margin },
           styles: { fontSize: 9, cellPadding: 5 }
         });
-  
+      
         y = doc.lastAutoTable.finalY + 15;
       }
   
