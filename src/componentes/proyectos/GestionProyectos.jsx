@@ -48,6 +48,8 @@ import {
   MenuList,
   MenuItem,
   useBreakpointValue,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
 import {
   Plus,
@@ -144,7 +146,6 @@ const GestionProyectos = () => {
   // eslint-disable-next-line
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
-  const [error, setError] = useState(null);
   const [estadoToChange, setEstadoToChange] = useState(null);
   const [view, setView] = useState("list");
   const [estadoFilter, setEstadoFilter] = useState("todos");
@@ -191,18 +192,18 @@ const GestionProyectos = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No hay token de autenticación");
-
+  
       const response = await fetch(
         `${process.env.REACT_APP_backend}/proyecto`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
+  
       if (!response.ok) throw new Error("Error al cargar proyectos");
-
+  
       const data = await response.json();
-
+  
       if (Array.isArray(data)) {
         const sortedProyectos = data.sort((a, b) => {
           if (!a.numero || !b.numero) return 0;
@@ -214,9 +215,19 @@ const GestionProyectos = () => {
           }
           return parseInt(numB) - parseInt(numA);
         });
-
+  
         setProyectos(sortedProyectos);
         setFilteredProyectos(sortedProyectos);
+        
+        // Actualizar el proyecto seleccionado si existe
+        if (selectedProjectDetails) {
+          const updatedProject = sortedProyectos.find(
+            p => p._id === selectedProjectDetails._id
+          );
+          if (updatedProject) {
+            setSelectedProjectDetails(updatedProject);
+          }
+        }
       }
     } catch (error) {
       console.error("Error al cargar proyectos:", error);
@@ -230,13 +241,26 @@ const GestionProyectos = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedProjectDetails]);
 
   // Efecto para cargar proyectos al montar el componente
   useEffect(() => {
-    fetchProyectos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchProyectos, lastUpdate]);
+    const loadProyectos = async () => {
+      try {
+        await fetchProyectos();
+      } catch (error) {
+        console.error("Error al cargar proyectos iniciales:", error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los proyectos",
+          status: "error",
+          duration: 5000,
+        });
+      }
+    };
+    loadProyectos();
+    // eslint-disable-next-line
+  }, [lastUpdate]);
 
   // Función para aplicar los filtros
   const applyFilters = useCallback(() => {
@@ -287,11 +311,11 @@ const GestionProyectos = () => {
   };
 
   // Manejadores de eventos
-  const handleEstadoFilterChange = (e) => {
-    const newEstado = e.target.value;
-    setEstadoFilter(newEstado);
-    applyFilters(proyectos, newEstado);
-  };
+  //const handleEstadoFilterChange = (e) => {
+  //  const newEstado = e.target.value;
+  //  setEstadoFilter(newEstado);
+  //  applyFilters(proyectos, newEstado);
+  //};
 
   const handleCreateProject = () => {
     setView("create");
@@ -305,29 +329,65 @@ const GestionProyectos = () => {
   };
 
   const handleViewDetails = async (proyecto) => {
+    if (!proyecto?._id) {
+      console.error('ID de proyecto no válido:', proyecto);
+      toast({
+        title: "Error",
+        description: "No se puede cargar los detalles del proyecto",
+        status: "error",
+        duration: 5000,
+      });
+      return;
+    }
+  
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
+      
       const response = await fetch(
         `${process.env.REACT_APP_backend}/proyecto/${proyecto._id}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache'
+          },
         }
       );
-
-      if (!response.ok)
-        throw new Error("Error al cargar los detalles del proyecto");
-
+  
+      if (!response.ok) {
+        throw new Error(`Error al cargar los detalles del proyecto: ${response.statusText}`);
+      }
+  
       const detallesProyecto = await response.json();
-      setSelectedProjectDetails(detallesProyecto);
+  
+      // Verificar que los datos sean válidos y completos
+      if (!detallesProyecto || !detallesProyecto._id) {
+        throw new Error("Los datos del proyecto están incompletos");
+      }
+  
+      // Asegurar que todas las referencias estén presentes
+      const proyectoCompleto = {
+        ...detallesProyecto,
+        encargado: detallesProyecto.encargado || null,
+        donantes: detallesProyecto.donantes || [],
+        beneficiarios: detallesProyecto.beneficiarios || [],
+        objetivosGlobales: detallesProyecto.objetivosGlobales || [],
+        lineasEstrategicas: detallesProyecto.lineasEstrategicas || [],
+      };
+  
+      setSelectedProjectDetails(proyectoCompleto);
       onDetailsOpen();
     } catch (error) {
+      console.error('Error en handleViewDetails:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Error al cargar los detalles del proyecto",
         status: "error",
         duration: 5000,
-        isClosable: true,
       });
+      setSelectedProjectDetails(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -413,18 +473,42 @@ const GestionProyectos = () => {
 
   const handleEditSuccess = async (updatedProject) => {
     try {
+      if (!updatedProject?._id) {
+        throw new Error("Datos del proyecto actualizados inválidos");
+      }
+  
       // Actualizar el proyecto en el estado local inmediatamente
+      const proyectoActualizado = {
+        ...updatedProject,
+        encargado: updatedProject.encargado || null,
+        donantes: updatedProject.donantes || [],
+        beneficiarios: updatedProject.beneficiarios || [],
+        objetivosGlobales: updatedProject.objetivosGlobales || [],
+        lineasEstrategicas: updatedProject.lineasEstrategicas || [],
+      };
+  
       setProyectos((prevProyectos) =>
         prevProyectos.map((p) =>
-          p._id === updatedProject._id ? updatedProject : p
+          p._id === proyectoActualizado._id ? proyectoActualizado : p
         )
       );
-
+      
+      setFilteredProyectos((prevProyectos) =>
+        prevProyectos.map((p) =>
+          p._id === proyectoActualizado._id ? proyectoActualizado : p
+        )
+      );
+  
+      // Actualizar el proyecto seleccionado si está siendo visualizado
+      if (selectedProjectDetails?._id === proyectoActualizado._id) {
+        setSelectedProjectDetails(proyectoActualizado);
+      }
+  
       // Cerrar el modal y limpiar el estado
       setSelectedProject(null);
       setView("list");
       onEditClose();
-
+  
       toast({
         title: "Éxito",
         description: "Proyecto actualizado correctamente",
@@ -432,13 +516,14 @@ const GestionProyectos = () => {
         duration: 5000,
         isClosable: true,
       });
-
+  
       // Recargar los proyectos para asegurar sincronización
       await fetchProyectos();
     } catch (error) {
+      console.error("Error en handleEditSuccess:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Error al actualizar el proyecto",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -1142,81 +1227,37 @@ const GestionProyectos = () => {
 
         <Modal
           isOpen={isDetailsOpen}
-          onClose={onDetailsClose}
+          onClose={() => {
+            onDetailsClose();
+            setSelectedProjectDetails(null); // Limpiar los detalles al cerrar
+          }}
           size={{ base: "full", md: "2xl" }}
           motionPreset="slideInBottom"
         >
-          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
-          <ModalContent
-            maxW={{ base: "100%", md: "800px" }}
-            minH={{ base: "100vh", md: "auto" }}
-            m={{ base: 0, md: "24px auto" }}
-            borderRadius={{ base: 0, md: "xl" }}
-            bg="white"
-            overflow="hidden"
-          >
-            <ModalHeader
-              borderBottom="1px"
-              borderColor="purple.100"
-              bg="purple.50"
-              px={4}
-              py={3}
-              color="purple.700"
-            >
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>
               Detalles del Proyecto
-              <ModalCloseButton color="purple.500" />
+              <ModalCloseButton />
             </ModalHeader>
-            <ModalBody
-              p={0}
-              overflow="auto"
-              maxH={{ base: "calc(100vh - 80px)", md: "85vh" }}
-            >
-              {selectedProjectDetails && (
+            <ModalBody>
+              {isLoading ? (
+                <Progress size="xs" isIndeterminate />
+              ) : selectedProjectDetails && selectedProjectDetails._id ? (
                 <VerProyecto
                   proyecto={selectedProjectDetails}
                   onBack={onDetailsClose}
                 />
-              )}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-
-        <Modal
-          isOpen={isDetailsOpen}
-          onClose={onDetailsClose}
-          size={{ base: "full", md: "2xl" }}
-          motionPreset="slideInBottom"
-        >
-          <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
-          <ModalContent
-            maxW={{ base: "100%", md: "800px" }}
-            minH={{ base: "100vh", md: "auto" }}
-            m={{ base: 0, md: "24px auto" }}
-            borderRadius={{ base: 0, md: "xl" }}
-            bg="white"
-            overflow="hidden"
-          >
-            <ModalHeader
-              borderBottom="1px"
-              borderColor="purple.100"
-              bg="purple.50"
-              px={4}
-              py={3}
-              color="purple.700"
-            >
-              Detalles del Proyecto
-              <ModalCloseButton color="purple.500" />
-            </ModalHeader>
-            <ModalBody
-              p={0}
-              overflow="auto"
-              maxH={{ base: "calc(100vh - 80px)", md: "85vh" }}
-            >
-              {selectedProjectDetails && (
-                <VerProyecto
-                  proyecto={selectedProjectDetails}
-                  onBack={onDetailsClose}
-                />
+              ) : (
+                <Alert status="error">
+                  <AlertIcon />
+                  <VStack align="start" spacing={2}>
+                    <Text>No se pudieron cargar los detalles del proyecto</Text>
+                    <Button size="sm" onClick={onDetailsClose}>
+                      Cerrar
+                    </Button>
+                  </VStack>
+                </Alert>
               )}
             </ModalBody>
           </ModalContent>
