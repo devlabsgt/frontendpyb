@@ -14,24 +14,28 @@ import {
   FormErrorMessage,
   Alert,
   AlertIcon,
+  Card,
+  CardBody,
+  Grid,
+  GridItem,
+  Divider,
 } from "@chakra-ui/react";
 
 const ActividadAvanceForm = ({
-  actividad = {}, // Provide empty object as default value
-  onAvanceChange = () => {}, // Default empty function
-  onObservacionesChange = () => {}, // Default empty function
-  fechasProyecto = {}, // Default empty object
+  actividad = {},
+  onAvanceChange = () => {},
+  onObservacionesChange = () => {},
+  fechasProyecto = {},
 }) => {
-  // Early return or default render if required props are missing
   if (!fechasProyecto.fechaInicio || !fechasProyecto.fechaFinal) {
     return (
-      <Box p={4}>
-        <Text color="red.500">Error: Fechas del proyecto no disponibles</Text>
-      </Box>
+      <Alert status="error" borderRadius="md">
+        <AlertIcon />
+        <Text>Fechas del proyecto no disponibles</Text>
+      </Alert>
     );
   }
 
-  // Safely access actividad properties with defaults
   const {
     avance = 0,
     fechaInicio = "",
@@ -39,20 +43,9 @@ const ActividadAvanceForm = ({
     observaciones = "",
   } = actividad;
 
-  // Validación de fechas
   const validateFecha = (fecha, tipo) => {
     if (!fechasProyecto?.fechaInicio || !fechasProyecto?.fechaFinal) {
-      return (
-        <Box p={4}>
-          <Alert status="error">
-            <AlertIcon />
-            <Text>
-              Para agregar actividades, primero debe establecer las fechas de
-              inicio y fin del proyecto en la sección de Información Básica.
-            </Text>
-          </Alert>
-        </Box>
-      );
+      return "Para agregar actividades, primero debe establecer las fechas del proyecto";
     }
 
     const fechaActividad = new Date(fecha);
@@ -94,82 +87,108 @@ const ActividadAvanceForm = ({
   };
 
   return (
-    <VStack spacing={4} align="stretch">
-      <HStack spacing={4}>
-        <FormControl flex="1">
-          <FormLabel>Nivel de Avance</FormLabel>
-          <HStack spacing={4}>
-            <NumberInput
-              value={avance}
-              onChange={(value) => onAvanceChange(Number(value))}
-              min={0}
-              max={100}
-              step={1}
-              w="100px"
-            >
-              <NumberInputField />
-            </NumberInput>
-            <Box flex="1">
-              <Progress
-                value={avance}
-                size="sm"
-                colorScheme={
-                  avance < 30 ? "red" : avance < 70 ? "yellow" : "green"
-                }
-                borderRadius="full"
-                hasStripe
-              />
-            </Box>
-            <Text fontSize="sm" width="60px" textAlign="right">
-              {avance}%
-            </Text>
-          </HStack>
-        </FormControl>
-      </HStack>
+    <Card variant="outline" bg="white">
+      <CardBody>
+        <VStack spacing={6} align="stretch">
+          {/* Sección de Avance */}
+          <Box>
+            <FormControl>
+              <FormLabel fontWeight="medium" fontSize="sm" mb={3}>
+                Nivel de Avance
+              </FormLabel>
+              <VStack spacing={2} align="stretch">
+                <HStack spacing={4} align="center">
+                  <NumberInput
+                    value={avance}
+                    onChange={(value) => onAvanceChange(Number(value))}
+                    min={0}
+                    max={100}
+                    step={1}
+                    size="sm"
+                    w="100px"
+                  >
+                    <NumberInputField />
+                  </NumberInput>
+                  <Text fontSize="sm" color="gray.600" w="60px">
+                    {avance}%
+                  </Text>
+                </HStack>
+                <Progress
+                  value={avance}
+                  size="sm"
+                  colorScheme={
+                    avance < 30 ? "red" : avance < 70 ? "yellow" : "green"
+                  }
+                  borderRadius="full"
+                  hasStripe
+                />
+              </VStack>
+            </FormControl>
+          </Box>
 
-      <FormControl isRequired isInvalid={!fechaInicio}>
-        <FormLabel>Fecha de Inicio</FormLabel>
-        <Input
-          type="date"
-          value={fechaInicio}
-          onChange={(e) => handleFechaChange("inicio", e.target.value)}
-          min={fechasProyecto.fechaInicio}
-          max={fechasProyecto.fechaFinal}
-        />
-        {!fechaInicio && (
-          <FormErrorMessage>La fecha de inicio es requerida</FormErrorMessage>
-        )}
-      </FormControl>
+          <Divider />
 
-      <FormControl isRequired isInvalid={!fechaFin}>
-        <FormLabel>Fecha de Fin</FormLabel>
-        <Input
-          type="date"
-          value={fechaFin}
-          onChange={(e) => handleFechaChange("fin", e.target.value)}
-          min={fechaInicio || fechasProyecto.fechaInicio}
-          max={fechasProyecto.fechaFinal}
-        />
-        {!fechaFin && (
-          <FormErrorMessage>
-            La fecha de finalización es requerida
-          </FormErrorMessage>
-        )}
-      </FormControl>
+          {/* Sección de Fechas */}
+          <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+            <GridItem>
+              <FormControl isRequired isInvalid={!fechaInicio}>
+                <FormLabel fontSize="sm">Fecha de Inicio</FormLabel>
+                <Input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => handleFechaChange("inicio", e.target.value)}
+                  min={fechasProyecto.fechaInicio}
+                  max={fechasProyecto.fechaFinal}
+                  size="sm"
+                />
+                {!fechaInicio && (
+                  <FormErrorMessage>
+                    La fecha de inicio es requerida
+                  </FormErrorMessage>
+                )}
+              </FormControl>
+            </GridItem>
 
-      <FormControl>
-        <FormLabel>Observaciones</FormLabel>
-        <Textarea
-          value={observaciones}
-          onChange={(e) =>
-            onObservacionesChange("observaciones", e.target.value)
-          }
-          placeholder="Ingrese observaciones sobre el avance de la actividad"
-          size="sm"
-          rows={3}
-        />
-      </FormControl>
-    </VStack>
+            <GridItem>
+              <FormControl isRequired isInvalid={!fechaFin}>
+                <FormLabel fontSize="sm">Fecha de Fin</FormLabel>
+                <Input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => handleFechaChange("fin", e.target.value)}
+                  min={fechaInicio || fechasProyecto.fechaInicio}
+                  max={fechasProyecto.fechaFinal}
+                  size="sm"
+                />
+                {!fechaFin && (
+                  <FormErrorMessage>
+                    La fecha de finalización es requerida
+                  </FormErrorMessage>
+                )}
+              </FormControl>
+            </GridItem>
+          </Grid>
+
+          <Divider />
+
+          {/* Sección de Observaciones */}
+          <FormControl>
+            <FormLabel fontSize="sm">Observaciones</FormLabel>
+            <Textarea
+              value={observaciones}
+              onChange={(e) =>
+                onObservacionesChange("observaciones", e.target.value)
+              }
+              placeholder="Ingrese observaciones sobre el avance de la actividad"
+              size="sm"
+              rows={3}
+              resize="vertical"
+              bg="white"
+            />
+          </FormControl>
+        </VStack>
+      </CardBody>
+    </Card>
   );
 };
 

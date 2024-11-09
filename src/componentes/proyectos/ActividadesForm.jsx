@@ -11,6 +11,7 @@ import {
   Text,
   Alert,
   AlertIcon,
+  TableContainer,
   Table,
   Thead,
   Tbody,
@@ -20,11 +21,13 @@ import {
   useToast,
   Progress,
   Collapse,
+  Card,
+  CardBody,
+  Divider,
 } from "@chakra-ui/react";
 import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import QuickCreateSelect from "./QuickCreateSelect";
 import ActividadAvanceForm from "./ActividadAvanceForm";
-import PropTypes from "prop-types";
 
 const ActividadesForm = ({
   presupuestoTotal = 0,
@@ -188,178 +191,171 @@ const ActividadesForm = ({
   };
 
   return (
-    <Box>
+    <Box p={4} bg="white" borderRadius="xl" shadow="sm">
       <VStack spacing={4} align="stretch">
         {error && (
-          <Alert status="error">
+          <Alert status="error" borderRadius="md">
             <AlertIcon />
             {error}
           </Alert>
         )}
 
-        <HStack justify="space-between" mb={4}>
-          <Box>
-            <Text fontWeight="bold">
-              Presupuesto Disponible:{" "}
-              {formatearMoneda(calcularPresupuestoDisponible())}
-            </Text>
-            <Text fontSize="sm" color="gray.600">
-              Avance Total del Proyecto:{" "}
-              {calcularAvanceTotal(actividadesLocales).toFixed(1)}%
-            </Text>
-          </Box>
-          <Button
-            leftIcon={<Plus />}
-            onClick={agregarActividad}
-            colorScheme="blue"
-            isDisabled={calcularPresupuestoDisponible() <= 0}
-          >
-            Agregar Actividad
-          </Button>
-        </HStack>
+        {/* Header con información y botón de agregar */}
+        <Card bg="gray.50" variant="outline">
+          <CardBody>
+            <HStack justify="space-between" wrap="wrap" spacing={4}>
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="medium" color="gray.700">
+                  Presupuesto Disponible:{" "}
+                  <Text as="span" fontWeight="bold" color="green.600">
+                    {new Intl.NumberFormat("es-GT", {
+                      style: "currency",
+                      currency: "GTQ",
+                    }).format(calcularPresupuestoDisponible())}
+                  </Text>
+                </Text>
+                <Text fontSize="sm" color="gray.600">
+                  Avance Total del Proyecto:{" "}
+                  <Text as="span" fontWeight="bold" color="blue.600">
+                    {calcularAvanceTotal(actividadesLocales).toFixed(1)}%
+                  </Text>
+                </Text>
+              </VStack>
+              <Button
+                leftIcon={<Plus size={16} />}
+                onClick={agregarActividad}
+                colorScheme="blue"
+                size="sm"
+                isDisabled={calcularPresupuestoDisponible() <= 0}
+              >
+                Agregar Actividad
+              </Button>
+            </HStack>
+          </CardBody>
+        </Card>
 
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th></Th>
-              <Th>Nombre</Th>
-              <Th>Presupuesto</Th>
-              <Th>% del Total</Th>
-              <Th>Avance</Th>
-              <Th>Beneficiarios</Th>
-              <Th>Acciones</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {actividadesLocales.map((actividad, index) => (
-              <React.Fragment key={index}>
-                <Tr>
-                  <Td>
-                    <IconButton
-                      icon={
-                        expandedActividad === index ? (
-                          <ChevronUp />
-                        ) : (
-                          <ChevronDown />
-                        )
-                      }
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setExpandedActividad(
-                          expandedActividad === index ? null : index
-                        )
-                      }
-                    />
-                  </Td>
-                  <Td>
-                    <Input
-                      value={actividad.nombre}
-                      onChange={(e) =>
-                        actualizarActividad(index, "nombre", e.target.value)
-                      }
-                      size="sm"
-                    />
-                  </Td>
-                  <Td>
-                    <NumberInput
-                      value={actividad.presupuestoAsignado}
-                      onChange={(value) =>
-                        actualizarActividad(
-                          index,
-                          "presupuestoAsignado",
-                          Number(value)
-                        )
-                      }
-                      size="sm"
-                      max={
-                        calcularPresupuestoDisponible() +
-                        Number(actividad.presupuestoAsignado)
-                      }
-                      min={0}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </Td>
-                  <Td>
-                    {calcularPorcentajePresupuesto(
-                      actividad.presupuestoAsignado
-                    ).toFixed(2)}
-                    %
-                  </Td>
-                  <Td>
-                    <Progress
-                      value={actividad.avance}
-                      size="sm"
-                      colorScheme={
-                        actividad.avance < 30
-                          ? "red"
-                          : actividad.avance < 70
-                          ? "yellow"
-                          : "green"
-                      }
-                      w="100px"
-                    />
-                  </Td>
-                  <Td>
-                    <QuickCreateSelect
-                      options={beneficiariosDisponibles}
-                      value={actividad.beneficiariosAsociados?.map(
-                        (b) => b.beneficiario
-                      )}
-                      onChange={(value) =>
-                        actualizarBeneficiarios(index, value)
-                      }
-                      placeholder="Beneficiarios"
-                      type="beneficiario"
-                      isMulti={true}
-                      size="sm"
-                    />
-                  </Td>
-                  <Td>
-                    <IconButton
-                      icon={<Trash2 />}
-                      onClick={() => removerActividad(index)}
-                      colorScheme="red"
-                      variant="ghost"
-                      size="sm"
-                    />
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Td colSpan={7} p={0}>
-                    <Collapse in={expandedActividad === index}>
-                      <Box p={4} bg="gray.50">
-                        <ActividadAvanceForm
-                          actividad={actividad}
-                          onAvanceChange={(avance) =>
-                            handleAvanceChange(index, avance)
-                          }
-                          onObservacionesChange={(campo, valor) =>
-                            handleObservacionesChange(index, campo, valor)
-                          }
-                          fechasProyecto={fechasProyecto}
+        <TableContainer
+          maxH="calc(100vh - 400px)"
+          overflowY="auto"
+          sx={{
+            "&::-webkit-scrollbar": {
+              width: "8px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              borderRadius: "8px",
+            },
+          }}
+        >
+          <Table variant="simple" size="sm">
+            <Thead position="sticky" top={0} bg="white" zIndex={1}>
+              <Tr>
+                <Th width="40px"></Th>
+                <Th>Nombre</Th>
+                <Th width="150px">Presupuesto</Th>
+                <Th width="100px">% Total</Th>
+                <Th width="120px">Avance</Th>
+                <Th>Beneficiarios</Th>
+                <Th width="100px">Acciones</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {actividadesLocales.map((actividad, index) => (
+                <React.Fragment key={index}>
+                  <Tr>
+                    <Td p={2}>
+                      <IconButton
+                        icon={expandedActividad === index ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpandedActividad(expandedActividad === index ? null : index)}
+                        aria-label="Expandir actividad"
+                      />
+                    </Td>
+                    <Td>
+                      <Input
+                        value={actividad.nombre}
+                        onChange={(e) => actualizarActividad(index, "nombre", e.target.value)}
+                        size="sm"
+                        variant="filled"
+                      />
+                    </Td>
+                    <Td>
+                      <NumberInput
+                        value={actividad.presupuestoAsignado}
+                        onChange={(value) => actualizarActividad(index, "presupuestoAsignado", Number(value))}
+                        size="sm"
+                        max={calcularPresupuestoDisponible() + Number(actividad.presupuestoAsignado)}
+                        min={0}
+                      >
+                        <NumberInputField />
+                      </NumberInput>
+                    </Td>
+                    <Td isNumeric>
+                      <Text fontSize="sm" color="gray.600">
+                        {calcularPorcentajePresupuesto(actividad.presupuestoAsignado).toFixed(1)}%
+                      </Text>
+                    </Td>
+                    <Td>
+                      <VStack spacing={1} align="stretch">
+                        <Progress
+                          value={actividad.avance}
+                          size="sm"
+                          colorScheme={actividad.avance < 30 ? "red" : actividad.avance < 70 ? "yellow" : "green"}
+                          borderRadius="full"
+                          bg="gray.100"
                         />
-                      </Box>
-                    </Collapse>
-                  </Td>
-                </Tr>
-              </React.Fragment>
-            ))}
-          </Tbody>
-        </Table>
+                        <Text fontSize="xs" textAlign="right" color="gray.600">
+                          {actividad.avance}%
+                        </Text>
+                      </VStack>
+                    </Td>
+                    <Td>
+                      <QuickCreateSelect
+                        options={beneficiariosDisponibles}
+                        value={actividad.beneficiariosAsociados?.map((b) => b.beneficiario)}
+                        onChange={(value) => actualizarBeneficiarios(index, value)}
+                        placeholder="Seleccionar beneficiarios"
+                        type="beneficiario"
+                        isMulti={true}
+                        size="sm"
+                      />
+                    </Td>
+                    <Td>
+                      <IconButton
+                        icon={<Trash2 size={16} />}
+                        onClick={() => removerActividad(index)}
+                        colorScheme="red"
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Eliminar actividad"
+                      />
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td colSpan={7} p={0}>
+                      <Collapse in={expandedActividad === index}>
+                        <Box p={4} bg="gray.50">
+                          <ActividadAvanceForm
+                            actividad={actividad}
+                            onAvanceChange={(avance) => handleAvanceChange(index, avance)}
+                            onObservacionesChange={(campo, valor) => handleObservacionesChange(index, campo, valor)}
+                            fechasProyecto={fechasProyecto}
+                          />
+                        </Box>
+                      </Collapse>
+                    </Td>
+                  </Tr>
+                </React.Fragment>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
       </VStack>
     </Box>
   );
-};
-
-ActividadesForm.propTypes = {
-  presupuestoTotal: PropTypes.number,
-  actividades: PropTypes.array,
-  onActividadesChange: PropTypes.func,
-  beneficiariosDisponibles: PropTypes.array,
-  fechasProyecto: PropTypes.object,
-  onAvanceChange: PropTypes.func,
 };
 
 export default ActividadesForm;
