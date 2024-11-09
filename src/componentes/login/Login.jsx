@@ -25,7 +25,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log(`usuario: ${email} pass ${password}, estado: ${activo} token: ${token}`);
+      console.log(`${process.env.REACT_APP_backend}/iniciarSesion`);
       const response = await axios.post(`${process.env.REACT_APP_backend}/iniciarSesion`, { email, password });
       const { token, activo, verificado } = response.data;
       console.log()
