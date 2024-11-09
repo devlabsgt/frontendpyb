@@ -27,7 +27,7 @@ const Login = () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_backend}/iniciarSesion`, { email, password });
       const { token, activo, verificado } = response.data;
-      console.log(`usuario: ${email} pass ${password}, estado: ${activo}`);
+      console.log(`usuario: ${email} pass ${password}, estado: ${activo} token: ${token}`);
       if (!activo) {
         Swal.fire({
           title: "Usuario desactivado",
