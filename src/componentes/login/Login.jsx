@@ -25,8 +25,8 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log(`${process.env.REACT_APP_backend}/iniciarSesion`);
-      const response = await axios.post(`${process.env.REACT_APP_backend}/iniciarSesion`, { email, password });
+      console.log(`${process.env.REACT_APP_BACKEND}/iniciarSesion`);
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND}/iniciarSesion`, { email, password });
       const { token, activo, verificado } = response.data;
       console.log()
       if (!activo) {
@@ -83,7 +83,7 @@ const Login = () => {
     }
 
     try {
-      const response = await axios.post(`${process.env.REACT_APP_backend}/recuperacion`, { email: resetEmail });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND}/recuperacion`, { email: resetEmail });
       Swal.fire({
         title: "Correo enviado",
         text: response.data.mensaje,
